@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Edit {{ user.username }} - Workplan Manager{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="workplan-card p-5">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold mb-3">
+                    <i class="bi bi-person-gear text-primary me-2"></i>
+                    Edit User: {{ user.username }}
+                </h2>
+                <div class="role-{{ user.role|lower }} px-4 py-2 rounded-pill d-inline-block">
+                    <strong>Role: {{ user.role }}</strong>
+                </div>
+            </div>
+
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        {{ form.username.label(class="form-label fw-bold") }}
+                        {{ form.username(class="form-control form-control-lg rounded-pill", placeholder="Enter username") }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.mda_name.label(class="form-label fw-bold") }}
+                        {{ form.mda_name(class="form-control form-control-lg rounded-pill", placeholder="Ministry/Agency") }}
+                    </div>
+                    <div class="col-12">
+                        {{ form.email.label(class="form-label fw-bold") }}
+                        {{ form.email(class="form-control form-control-lg rounded-3", placeholder="user@edostate.gov.ng") }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.phone.label(class="form-label fw-bold") }}
+                        {{ form.phone(class="form-control form-control-lg rounded-pill", placeholder="+234 123 456 7890") }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.role.label(class="form-label fw-bold") }}
+                        {{ form.role(class="form-select form-control-lg rounded-pill") }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">New Password (Leave blank to keep current)</label>
+                        {{ form.password(class="form-control form-control-lg rounded-pill", placeholder="Leave blank to keep existing") }}
+                        <small class="text-muted">Minimum 6 characters</small>
+                    </div>
+                    {{ form.confirm_password.label(class="form-label fw-bold d-none") }}
+                    {{ form.confirm_password(class="d-none") }}
+                </div>
+
+                <div class="d-grid gap-3 mt-5">
+                    <button type="submit" class="btn btn-primary btn-modern btn-lg">
+                        <i class="bi bi-check-lg me-2"></i>Update User
+                    </button>
+                    <a href="{{ url_for('manage_users') }}" class="btn btn-outline-secondary btn-modern">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Users
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

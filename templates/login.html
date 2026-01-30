@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Login - Workplan Manager{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-lg border-0 rounded-4">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold text-primary">Welcome Back</h2>
+                    <p class="text-muted">Sign in to your account</p>
+                </div>
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-4">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control form-control-lg rounded-pill") }}
+                    </div>
+                    <div class="mb-4">
+                        {{ form.password.label(class="form-label") }}
+                        {{ form.password(class="form-control form-control-lg rounded-pill") }}
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill mb-3">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                    </button>
+                </form>
+                <div class="text-center">
+                    <p>Don't have an account? <a href="{{ url_for('register') }}" class="text-primary fw-bold">Sign up</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Workplan Manager - Edo State{% endblock %}</title>
+    
+    <!-- Bootstrap 5.3 + Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Custom Styles - COMPACT NAVBAR (45px) -->
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --secondary: #0f172a;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --light-bg: #f8fafc;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0,0, 0.1);
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* 🔥 COMPACT NAVBAR (45px height) */
+        .navbar {
+            background: rgba(255,255,255,0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--card-shadow);
+            padding: 0.25rem 1rem !important;
+            min-height: 45px !important;
+        }
+        
+        .navbar-brand {
+            padding: 0.25rem 0.5rem !important;
+            font-size: 1.1rem !important;
+            line-height: 1.3 !important;
+        }
+        
+        .nav-link { padding: 0.35rem 0.75rem !important; }
+        .navbar-nav .nav-link { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+        .dropdown-toggle { padding: 0.3rem 0.75rem !important; }
+        .navbar-toggler { padding: 0.2rem 0.4rem !important; }
+        
+        .btn-modern {
+            border-radius: 10px;
+            padding: 0.5rem 1.25rem !important;
+            font-size: 0.9rem !important;
+        }
+        
+        /* Role badges compact */
+        .role-user, .role-admin, .role-superadmin {
+            font-size: 0.7rem !important;
+            padding: 0.2em 0.5em !important;
+        }
+        
+        .main-content { margin-top: 3.5rem; padding: 2rem 0; }
+        
+        /* Keep all your existing card styles */
+        .workplan-card { background: white; border-radius: 20px; box-shadow: var(--card-shadow); border: none; overflow: hidden; transition: all 0.3s ease; }
+        .workplan-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0,0, 0.1); }
+        .status-badge { font-size: 0.85rem; padding: 0.5em 1em; border-radius: 50px; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <!-- 🔥 FIXED NAVBAR - ALL SYNTAX CORRECT -->
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-3" href="{{ url_for('index') }}">
+                <i class="bi bi-calendar3-week text-primary"></i>
+                Workplan Manager
+            </a>
+            
+            {% if current_user.is_authenticated %}
+            <!-- AUTHENTICATED: Workplan dropdown + User menu + Add button -->
+            
+            <!-- Workplan Navigation (only on workplan pages) -->
+            {% if workplan %}
+            <div class="navbar-nav mx-auto">
+                <ul class="navbar-nav me-3">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle fw-bold text-primary px-3 py-2 rounded-pill bg-light" 
+                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-list-ul me-1"></i> {{ workplan.mda }}: {{ workplan.project_title[:25] }}{% if workplan.project_title|length > 25 %}...{% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-lg-start shadow-lg border-0" style="min-width: 450px; max-height: 400px; overflow-y: auto;">
+                            <li>
+                                <div class="dropdown-item-text px-4 py-3 text-center border-bottom bg-light">
+                                    <h6 class="fw-bold mb-1">{{ workplan.project_title }}</h6>
+                                    <span class="badge bg-{% if workplan.status == 'Completed' %}success{% elif workplan.status == 'Ongoing' or workplan.status == 'Started' %}warning{% elif workplan.status == 'Pending' %}secondary{% else %}dark{% endif %} px-3 py-2">
+                                        {{ workplan.status }}
+                                    </span>
+                                    <small class="d-block text-muted mt-1">{{ workplan.deliverables|length }} deliverables | {{ workplan.kpis|length }} KPIs</small>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item py-2" href="{{ url_for('view_workplan', id=workplan.id) }}"><i class="bi bi-eye text-info me-2"></i>View Details</a></li>
+                            <li><a class="dropdown-item py-2" href="{{ url_for('edit_workplan', id=workplan.id) }}"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Workplan</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header px-3 py-2"><i class="bi bi-clock-history me-1"></i>Recent Workplans ({{ workplans|length }})</h6></li>
+                            {% for wp in workplans %}
+                            {% if wp.id != workplan.id %}
+                            <li><a class="dropdown-item py-2 {% if loop.index <= 3 %}border-start border-primary border-3{% endif %}" href="{{ url_for('view_workplan', id=wp.id) }}">
+                                <span class="badge bg-light text-dark me-2">{{ loop.index }}</span>
+                                <strong>{{ wp.mda }}</strong>: {{ wp.project_title[:35] }}{% if wp.project_title|length > 35 %}...{% endif %}<br>
+                                <small class="text-muted">{{ wp.status }} • {{ wp.deliverables|length }} deliverables</small>
+                            </a></li>
+                            {% endif %}
+                            {% endfor %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-center fw-bold py-3 bg-light" href="{{ url_for('index') }}"><i class="bi bi-grid-3x3-gap-fill me-2"></i>View All Workplans</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            {% endif %}  <!-- ✅ Closes workplan if -->
+            
+            <!-- User Menu -->
+            <div class="navbar-nav me-3">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center px-3 py-2 rounded-pill bg-light" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle fs-5 me-2"></i>
+                        {{ current_user.username }}
+                        <span class="badge ms-1 role-{{ current_user.role|lower }}">{{ current_user.role }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                        <li><div class="dropdown-item-text px-4 py-3 text-center border-bottom">
+                            <i class="bi bi-building fs-4 text-primary mb-2 d-block"></i>
+                            <strong>{{ current_user.mda_name }}</strong>
+                            <small class="d-block text-muted">{{ current_user.email }}</small>
+                        </div></li>
+                        {% if current_user.is_admin() %}
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-shield-check me-2"></i>Admin Panel</a></li>
+                        {% endif %}
+                        {% if current_user.is_superadmin() %}
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-star-fill text-warning me-2"></i>Superadmin Tools</a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('index') }}"><i class="bi bi-house-door me-2"></i>Dashboard</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- New Workplan Button -->
+            <div class="navbar-nav">
+                <a class="nav-link btn btn-primary btn-modern px-4" href="{{ url_for('add_workplan') }}">
+                    <i class="bi bi-plus-lg"></i> New Workplan
+                </a>
+            </div>
+            
+            {% else %}
+            <!-- NOT AUTHENTICATED: Login/Register -->
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link me-2" href="{{ url_for('login') }}">Login</a>
+                <a class="nav-link btn btn-outline-primary btn-modern px-3" href="{{ url_for('register') }}">Register</a>
+            </div>
+            {% endif %}  <!-- ✅ Closes main authentication if -->
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <div class="container mt-5">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else category }} flash-messages">
+                    <i class="bi bi-check-circle me-2"></i>{{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const startInput = document.querySelector('input[name="start_date"]');
+        const endInput = document.querySelector('input[name="end_date"]');
+        const durationInput = document.querySelector('input[name="duration"]');
+        
+        if (startInput && endInput && durationInput) {
+            function calculateDuration() {
+                if (startInput.value && endInput.value) {
+                    const start = new Date(startInput.value + 'T00:00:00');
+                    const end = new Date(endInput.value + 'T23:59:59');
+                    const diffTime = end - start;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    durationInput.value = diffDays > 0 ? diffDays : 1;
+                    durationInput.classList.add('border-success');
+                    durationInput.classList.remove('border-danger');
+                }
+            }
+            startInput.addEventListener('change', calculateDuration);
+            endInput.addEventListener('change', calculateDuration);
+        }
+    });
+    </script>
+</body>
+</html>
