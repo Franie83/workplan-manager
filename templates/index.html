@@ -1,39 +1,48 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="row mb-5">
-    <!-- Dashboard Header + SUPERADMIN Button -->
+    <!-- Dashboard Header - AVG % COMPLETE + ENHANCED SEARCH -->
     <div class="col-12">
         <div class="card border-0 shadow-sm bg-white rounded-4 p-4 mb-4">
             <div class="row align-items-center">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <h3 class="fw-bold mb-0">
                         <i class="bi bi-list-check text-primary me-2"></i>
                         Workplans Dashboard ({{ workplans|length }})
                     </h3>
                 </div>
-                <div class="col-md-5">
-                    <!-- Search -->
+                <div class="col-md-3">
+                    <!-- 🔥 AVERAGE COMPLETION % -->
+                    <div class="text-center">
+                        <div class="h4 fw-bold text-success mb-1">{{ avg_completion or 0 }}%</div>
+                        <small class="text-muted">Avg Complete</small>
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: {{ avg_completion or 0 }}%"></div>
+                        </div>
+                        {% if search_term %}
+                        <small class="text-muted fst-italic">filtered</small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <!-- 🔥 PROJECT COUNT -->
+                    <div class="text-center">
+                        <div class="h4 fw-bold text-primary mb-1">{{ project_count or workplans|length }}</div>
+                        <small class="text-muted">Projects</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <!-- 🔥 SEARCH MDA + PROJECT TITLE -->
                     <form method="GET" class="d-flex">
                         <input type="text" 
-                               name="mda_search" 
-                               class="form-control me-2 rounded-pill border-primary" 
-                               placeholder="🔍 Search MDAs (MST, MCDE...)" 
-                               value="{{ request.args.get('mda_search', '') }}">
-                        <button type="submit" class="btn btn-primary rounded-pill px-4">
-                            <i class="bi bi-search"></i> Search
+                               name="search" 
+                               class="form-control rounded-pill border-primary" 
+                               placeholder="🔍 Search MDAs or Projects..." 
+                               value="{{ search_term or '' }}">
+                        <button type="submit" class="btn btn-primary rounded-pill px-3 ms-1">
+                            <i class="bi bi-search"></i>
                         </button>
                     </form>
-                </div>
-                <div class="col-md-3 text-end">
-                    <!-- 🔥 SUPERADMIN ONLY - User Management Button -->
-                    {% if current_user.is_superadmin() %}
-                    <a href="{{ url_for('manage_users') }}" 
-                       class="btn btn-warning btn-modern btn-lg rounded-pill px-5 shadow-sm"
-                       title="Superadmin: Manage all users (CRUD)">
-                        <i class="bi bi-people-fill me-2"></i>
-                        Manage Users
-                    </a>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -44,57 +53,90 @@
 <div class="row g-4">
     {% for workplan in workplans %}
     <div class="col-xl-4 col-lg-6">
-        <div class="workplan-card h-100">
+        <div class="workplan-card h-100 position-relative">
+            <!-- 🔥 STATUS BADGE WITH APPROVER + COMMENT -->
+            <div class="position-absolute top-0 end-0 m-3 z-3">
+                <span class="badge bg-{{ workplan.status_badge_class }} status-badge px-4 py-2 fs-6 fw-bold shadow-sm">
+                    {{ workplan.status }}
+                    {% if workplan.admin_comment %}
+                    <i class="bi bi-chat-square-text ms-1 ms-md-2" 
+                       title="Admin: {{ workplan.admin_comment[:50] }}..." 
+                       data-bs-toggle="tooltip"></i>
+                    {% endif %}
+                </span>
+                {% if workplan.approved_by %}
+                <div class="mt-2">
+                    <small class="text-white bg-dark px-2 py-1 rounded fw-bold fs-6 shadow-sm">
+                        {{ workplan.approver.username[:8] if workplan.approver else 'Admin' }}
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+            
             <div class="p-4 border-bottom">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <h5 class="fw-bold mb-2">{{ workplan.project_title[:40] }}{% if workplan.project_title|length > 40 %}...{% endif %}</h5>
-                    <span class="badge bg-{% if workplan.status == 'Completed' %}success{% elif workplan.status == 'Ongoing' or workplan.status == 'Started' %}warning{% elif workplan.status == 'Pending' %}secondary{% else %}dark{% endif %} status-badge">
-                        {{ workplan.status }}
-                    </span>
+                    <h5 class="fw-bold mb-2">{{ workplan.project_title[:45] }}{% if workplan.project_title|length > 45 %}...{% endif %}</h5>
+                    {% if workplan.status == 'Pending' %}
+                    <span class="badge bg-warning px-2 py-1 fs-6">⏳</span>
+                    {% endif %}
                 </div>
                 <div class="mb-3">
-                    <small class="text-muted">MDA: <strong>{{ workplan.mda }}</strong></small>
+                    <small class="text-muted d-block mb-1">
+                        <i class="bi bi-building me-1 text-primary"></i>
+                        MDA: <strong>{{ workplan.mda }}</strong>
+                    </small>
+                    {% if workplan.approved_at %}
+                    <small class="text-muted d-block">
+                        <i class="bi bi-check-circle-fill me-1 text-success"></i>
+                        {{ workplan.approved_at.strftime('%Y-%m-%d') }}
+                    </small>
+                    {% endif %}
+                    <small class="text-muted">
+                        {{ workplan.start_date.strftime('%m/%d') }} - {{ workplan.end_date.strftime('%m/%d') }}
+                    </small>
                 </div>
-                <div class="progress-custom mb-3">
+                <div class="progress-custom mb-3" style="height: 8px;">
                     <div class="progress-bar bg-{% if workplan.completion_percentage >= 90 %}success{% elif workplan.completion_percentage >= 70 %}warning{% else %}primary{% endif %}" 
                          style="width: {{ workplan.completion_percentage }}%">
-                        {{ workplan.completion_percentage }}%
+                        <span class="visually-hidden">{{ workplan.completion_percentage }}%</span>
                     </div>
                 </div>
             </div>
             <div class="p-4">
                 <div class="row text-center mb-4">
                     <div class="col-4">
-                        <div class="fw-bold text-success fs-5">{{ workplan.deliverables|length }}</div>
+                        <div class="fw-bold text-success fs-4">{{ workplan.deliverables|length }}</div>
                         <small class="text-muted">Deliverables</small>
                     </div>
                     <div class="col-4">
-                        <div class="fw-bold text-primary fs-5">{{ workplan.kpis|length }}</div>
+                        <div class="fw-bold text-primary fs-4">{{ workplan.kpis|length }}</div>
                         <small class="text-muted">KPIs</small>
                     </div>
                     <div class="col-4">
-                        <div class="fw-bold text-info fs-5">{{ workplan.duration }}</div>
+                        <div class="fw-bold text-info fs-4">{{ workplan.duration_days }}</div>
                         <small class="text-muted">Days</small>
                     </div>
                 </div>
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('view_workplan', id=workplan.id) }}" class="btn btn-outline-primary btn-modern">
-                        <i class="bi bi-eye"></i> View
+                    <a href="{{ url_for('view_workplan', id=workplan.id) }}" class="btn btn-outline-primary btn-modern btn-lg">
+                        <i class="bi bi-eye me-1"></i> View Details
                     </a>
                     
                     <!-- 🔥 EDIT BUTTON - Owner or Superadmin -->
                     {% if workplan.created_by == current_user.id or current_user.is_superadmin() %}
-                    <a href="{{ url_for('edit_workplan', id=workplan.id) }}" class="btn btn-primary btn-modern">
-                        <i class="bi bi-pencil"></i> Edit
+                    {% if workplan.status != 'Pending' %}
+                    <a href="{{ url_for('edit_workplan', id=workplan.id) }}" class="btn btn-primary btn-modern btn-lg">
+                        <i class="bi bi-pencil me-1"></i> Edit
                     </a>
+                    {% endif %}
                     {% endif %}
                     
                     <!-- 🔥 DELETE BUTTON - Superadmin ONLY -->
                     {% if current_user.is_superadmin() %}
                     <a href="{{ url_for('delete_workplan', id=workplan.id) }}" 
-                       class="btn btn-danger btn-modern"
+                       class="btn btn-outline-danger btn-modern btn-lg"
                        onclick="return confirm('🗑️ Delete {{ workplan.project_title }}?\nThis cannot be undone.')">
-                        <i class="bi bi-trash"></i> Delete
+                        <i class="bi bi-trash me-1"></i> Delete
                     </a>
                     {% endif %}
                 </div>
@@ -109,9 +151,9 @@
 <div class="text-center py-5 my-5">
     <i class="bi bi-calendar-x fs-1 text-muted mb-4"></i>
     <h4 class="text-muted mb-3">No workplans found</h4>
-    <p class="text-muted mb-4">{{ "Try adjusting your search" if request.args.get('mda_search') else "Get started by adding your first workplan" }}</p>
-    <a href="{{ url_for('add_workplan') }}" class="btn btn-primary btn-modern btn-lg">
-        <i class="bi bi-plus-lg"></i> Add First Workplan
+    <p class="text-muted mb-4">{{ "Try adjusting your search" if search_term else "Get started by adding your first workplan" }}</p>
+    <a href="{{ url_for('add_workplan') }}" class="btn btn-primary btn-modern btn-lg px-5">
+        <i class="bi bi-plus-lg me-2"></i> Add First Workplan
     </a>
 </div>
 {% endif %}

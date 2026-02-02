@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_change_this_in_production'
 
 # 🔥 POSTGRESQL MIGRATION: Uses your DATABASE_URL environment variable
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///workplans.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -211,24 +211,52 @@ def logout():
 @app.route('/', methods=['GET'])
 @login_required
 def index():
-    search_term = request.args.get('mda_search', '').strip()
+    search_term = request.args.get('search', '').strip()
     
-    # Role-based visibility
+    # System-wide stats
+    pending_count = db.session.query(Workplan).filter_by(status='Pending').count()
+    approved_count = db.session.query(Workplan).filter_by(status='Approved').count()
+    rejected_count = db.session.query(Workplan).filter_by(status='Rejected').count()
+    
+    # Role-based query
     if current_user.is_superadmin() or current_user.is_admin():
-        # Superadmin/Admin: See ALL workplans
         base_query = Workplan.query
     else:
-        # Regular User: See only own workplans
         base_query = Workplan.query.filter_by(created_by=current_user.id)
     
+    # Filter workplans
     if search_term:
         workplans = base_query.filter(
-            Workplan.mda.ilike(f'%{search_term}%')
+            db.or_(
+                Workplan.mda.ilike(f'%{search_term}%'),
+                Workplan.project_title.ilike(f'%{search_term}%')
+            )
         ).order_by(Workplan.created_at.desc()).all()
     else:
         workplans = base_query.order_by(Workplan.created_at.desc()).all()
     
-    return render_template('index.html', workplans=workplans)
+    # 🔥 CALCULATE AVERAGE % COMPLETE (FILTER-AWARE)
+    if workplans and len(workplans) > 0:
+        total_completion = sum(float(wp.completion_percentage or 0) for wp in workplans)
+        avg_completion = round(total_completion / len(workplans), 1)
+        project_count = len(workplans)
+    else:
+        avg_completion = 0.0
+        project_count = 0
+    
+    # app.py index() MUST include these 3 variables:
+    return render_template('index.html', 
+                       workplans=workplans,
+                       pending_count=pending_count,
+                       approved_count=approved_count,
+                       rejected_count=rejected_count,
+                       avg_completion=avg_completion,     # ← ADD THIS
+                       project_count=project_count,       # ← ADD THIS  
+                       search_term=search_term)           # ← ADD THIS
+
+
+
+
 
 @app.route('/add', methods=['GET', 'POST'])
 @login_required
@@ -404,6 +432,77 @@ def view_workplan(id):
     base_query = Workplan.query.filter_by(created_by=current_user.id) if not current_user.is_admin() else Workplan.query
     all_workplans = base_query.order_by(Workplan.created_at.desc()).limit(10).all()
     return render_template('view.html', workplan=workplan, workplans=all_workplans)
+
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    if not current_user.is_admin():
+        abort(403)
+    
+    # Stats for admin dashboard
+    pending_count = Workplan.query.filter_by(status='Pending').count()
+    approved_count = Workplan.query.filter_by(status='Approved').count()
+    rejected_count = Workplan.query.filter_by(status='Rejected').count()
+    pending_workplans = Workplan.query.filter_by(status='Pending').limit(10).all()
+    
+    return render_template('users.html', 
+                         users=User.query.all(),
+                         pending_workplans=pending_workplans,
+                         pending_count=pending_count,
+                         approved_count=approved_count,
+                         rejected_count=rejected_count)
+
+
+# app.py - ADD these routes
+
+@app.route('/admin/pending_workplans')
+@login_required
+def pending_workplans():
+    if not current_user.is_admin():
+        abort(403)
+    
+    pending = Workplan.query.filter_by(status='Pending').order_by(Workplan.created_at.desc()).all()
+    
+    # 🔥 FIX: Use YOUR existing template
+    return render_template('pending_workplans.html', pending=pending)
+
+
+@app.route('/admin/approve_workplan/<int:workplan_id>', methods=['POST'])
+@login_required
+def approve_workplan(workplan_id):
+    if not current_user.is_admin():
+        abort(403)
+    
+    workplan = Workplan.query.get_or_404(workplan_id)
+    comment = request.form.get('admin_comment', '')
+    
+    workplan.status = 'Approved'
+    workplan.approved_by = current_user.id
+    workplan.approved_at = datetime.utcnow()
+    workplan.admin_comment = comment
+    
+    db.session.commit()
+    flash(f'✅ Workplan "{workplan.project_title}" approved!', 'success')
+    return redirect(url_for('pending_workplans'))
+
+@app.route('/admin/reject_workplan/<int:workplan_id>', methods=['POST'])
+@login_required
+def reject_workplan(workplan_id):
+    if not current_user.is_admin():
+        abort(403)
+    
+    workplan = Workplan.query.get_or_404(workplan_id)
+    comment = request.form.get('admin_comment', '')
+    
+    workplan.status = 'Rejected'
+    workplan.approved_by = current_user.id
+    workplan.approved_at = datetime.utcnow()
+    workplan.admin_comment = comment
+    
+    db.session.commit()
+    flash(f'❌ Workplan "{workplan.project_title}" rejected!', 'warning')
+    return redirect(url_for('pending_workplans'))
+
 
 if __name__ == '__main__':
     with app.app_context():

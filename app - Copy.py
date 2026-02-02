@@ -215,24 +215,49 @@ def logout():
 @app.route('/', methods=['GET'])
 @login_required
 def index():
-    search_term = request.args.get('mda_search', '').strip()
+    search_term = request.args.get('search', '').strip()
     
-    # Role-based visibility
+    # System-wide stats
+    pending_count = db.session.query(Workplan).filter_by(status='Pending').count()
+    approved_count = db.session.query(Workplan).filter_by(status='Approved').count()
+    rejected_count = db.session.query(Workplan).filter_by(status='Rejected').count()
+    
+    # Role-based query
     if current_user.is_superadmin() or current_user.is_admin():
-        # Superadmin/Admin: See ALL workplans
         base_query = Workplan.query
     else:
-        # Regular User: See only own workplans
         base_query = Workplan.query.filter_by(created_by=current_user.id)
     
+    # Filter workplans
     if search_term:
         workplans = base_query.filter(
-            Workplan.mda.ilike(f'%{search_term}%')
+            db.or_(
+                Workplan.mda.ilike(f'%{search_term}%'),
+                Workplan.project_title.ilike(f'%{search_term}%')
+            )
         ).order_by(Workplan.created_at.desc()).all()
     else:
         workplans = base_query.order_by(Workplan.created_at.desc()).all()
     
-    return render_template('index.html', workplans=workplans)
+    # 🔥 CALCULATE AVERAGE % COMPLETE (FILTER-AWARE)
+    if workplans and len(workplans) > 0:
+        total_completion = sum(float(wp.completion_percentage or 0) for wp in workplans)
+        avg_completion = round(total_completion / len(workplans), 1)
+        project_count = len(workplans)
+    else:
+        avg_completion = 0.0
+        project_count = 0
+    
+    return render_template('index.html', 
+                         workplans=workplans,
+                         pending_count=pending_count,
+                         approved_count=approved_count,
+                         rejected_count=rejected_count,
+                         avg_completion=avg_completion,  # ← ADD THIS
+                         project_count=project_count,    # ← ADD THIS
+                         search_term=search_term)        # ← ADD THIS
+
+
 
 
 @app.route('/add', methods=['GET', 'POST'])

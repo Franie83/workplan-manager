@@ -10,10 +10,31 @@
                     <span class="badge bg-primary status-badge px-4 py-2">
                         <i class="bi bi-building me-1"></i>{{ workplan.mda }}
                     </span>
-                    <span class="badge bg-{% if workplan.status == 'Completed' %}success{% elif workplan.status == 'Ongoing' or workplan.status == 'Started' %}warning{% elif workplan.status == 'Pending' %}secondary{% else %}dark{% endif %} status-badge px-4 py-2">
+                    <span class="badge bg-{% if workplan.status == 'Completed' %}success{% elif workplan.status == 'Approved' %}success{% elif workplan.status == 'Ongoing' or workplan.status == 'Started' %}warning{% elif workplan.status == 'Pending' %}warning{% else %}dark{% endif %} status-badge px-4 py-2">
                         {{ workplan.status }}
                     </span>
                 </div>
+            </div>
+
+            <!-- 🔥 STATUS SUMMARY - All users see -->
+            <div class="alert alert-{% if workplan.status == 'Approved' %}success{% elif workplan.status == 'Rejected' %}danger{% else %}warning{% endif %} mb-4">
+                {% if workplan.status == 'Approved' %}
+                    <i class="bi bi-check-circle-fill fs-3 me-2"></i>
+                    <strong>✅ APPROVED</strong> by {{ workplan.approver.username if workplan.approver else 'Admin' }} 
+                    {% if workplan.approved_at %}on {{ workplan.approved_at.strftime('%Y-%m-%d') }}{% endif %}
+                    {% if workplan.admin_comment %}
+                        <br><small><em>"{{ workplan.admin_comment[:100] }}..."</em></small>
+                    {% endif %}
+                {% elif workplan.status == 'Rejected' %}
+                    <i class="bi bi-x-circle-fill fs-3 me-2"></i>
+                    <strong>❌ REJECTED</strong> by {{ workplan.approver.username if workplan.approver else 'Admin' }}
+                    {% if workplan.admin_comment %}
+                        <br><small><em>"{{ workplan.admin_comment }}"</em></small>
+                    {% endif %}
+                {% else %}
+                    <i class="bi bi-hourglass-split fs-3 me-2"></i>
+                    <strong>⏳ PENDING APPROVAL</strong> - Awaiting admin review
+                {% endif %}
             </div>
 
             <div class="row g-4">
@@ -78,7 +99,7 @@
                     </div>
                 </div>
 
-                <!-- Right Column - Stats -->
+                <!-- Right Column - Stats + APPROVAL (Admin Only) -->
                 <div class="col-lg-4">
                     <div class="sticky-top" style="top: 2rem;">
                         <!-- Timeline -->
@@ -109,7 +130,7 @@
                                 <div class="progress-bar bg-{% if workplan.completion_progress >= 90 %}success{% elif workplan.completion_progress >= 70 %}warning{% else %}primary{% endif %}" 
                                      role="progressbar" 
                                      style="width: {{ workplan.completion_progress }}%">
-                                    {{ workplan.completion_progress }}%
+                                   {{ workplan.completion_progress }}%
                                 </div>
                             </div>
                             <div class="text-center">
@@ -117,37 +138,74 @@
                             </div>
                         </div>
 
-                        <!-- Departments -->
-                        <div class="workplan-card p-4">
-                            <h6 class="section-header mb-3">
-                                <i class="bi bi-people text-secondary"></i> Departments
+                        <!-- 🔥 ADMIN APPROVAL SECTION (Pending + Admin Only) -->
+                        {% if workplan.status == 'Pending' and current_user.is_admin() %}
+                        <div class="workplan-card border-warning p-4 mb-4">
+                            <h6 class="section-header mb-4 text-warning">
+                                <i class="bi bi-shield-check me-2"></i>Admin Action Required
                             </h6>
-                            <div class="mb-3">
-                                <strong class="text-dark">Assigned:</strong><br>
-                                <span class="badge bg-secondary w-100 mb-1">{{ workplan.assigned_dept }}</span>
-                            </div>
-                            {% if workplan.collaborating_dept %}
-                            <div>
-                                <strong class="text-dark">Collaborating:</strong><br>
-                                <span class="badge bg-outline-primary w-100">{{ workplan.collaborating_dept }}</span>
-                            </div>
-                            {% endif %}
+                            
+                            <!-- APPROVE -->
+                            <form method="POST" action="{{ url_for('approve_workplan', workplan_id=workplan.id) }}" class="mb-3">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">Approval Note</label>
+                                    <textarea name="admin_comment" class="form-control form-control-sm" rows="2" 
+                                            placeholder="Optional approval comment..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100 mb-2">
+                                    <i class="bi bi-check-circle-fill me-1"></i>✅ APPROVE
+                                </button>
+                            </form>
+                            
+                            <!-- REJECT -->
+                            <form method="POST" action="{{ url_for('reject_workplan', workplan_id=workplan.id) }}">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-danger">Rejection Reason *</label>
+                                    <textarea name="admin_comment" class="form-control form-control-sm" rows="2" required
+                                            placeholder="Required rejection reason..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-danger w-100" 
+                                        onclick="return confirm('Reject this workplan?')">
+                                    <i class="bi bi-x-circle-fill me-1"></i>❌ REJECT
+                                </button>
+                            </form>
                         </div>
+                        {% endif %}
+
+                        <!-- Departments -->
+                       <!-- Departments - FIXED TEXT VISIBILITY -->
+<div class="workplan-card p-4">
+    <h6 class="section-header mb-3">
+        <i class="bi bi-people text-secondary"></i> Departments
+    </h6>
+    <div class="mb-3">
+        <strong class="text-dark">Assigned:</strong><br>
+        <span class="badge bg-secondary w-100 mb-1">{{ workplan.assigned_dept }}</span>
+    </div>
+    {% if workplan.collaborating_dept %}
+    <div>
+        <strong class="text-dark">Collaborating:</strong><br>
+        <!-- 🔥 FIXED: Dark text instead of outline -->
+        <span class="badge bg-primary text-white w-100">{{ workplan.collaborating_dept }}</span>
+    </div>
+    {% endif %}
+</div>
+
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Action Buttons -->
-    <div class="workplan-card p-4 mt-4">
-        <div class="d-flex justify-content-center gap-3">
-            <a href="{{ url_for('edit_workplan', id=workplan.id) }}" class="btn btn-primary btn-modern btn-lg">
-                <i class="bi bi-pencil-square me-2"></i>Edit Workplan
-            </a>
-            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-modern btn-lg">
-                <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
-            </a>
+        <!-- Action Buttons -->
+        <div class="workplan-card p-4 mt-4">
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{{ url_for('edit_workplan', id=workplan.id) }}" class="btn btn-primary btn-modern btn-lg">
+                    <i class="bi bi-pencil-square me-2"></i>Edit Workplan
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-modern btn-lg">
+                    <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
         </div>
     </div>
 </div>
