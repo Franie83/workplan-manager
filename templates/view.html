@@ -5,7 +5,7 @@
         <!-- Header Section -->
         <div class="workplan-card mb-4 p-5">
             <div class="text-center mb-5">
-                <h1 class="display-5 fw-bold text-dark mb-2">{{ workplan.project_title }}</h1>
+                <h1 class="display-5 fw-bold text-primary mb-2 bg-white px-4 py-2 rounded shadow">{{ workplan.project_title }}</h1>
                 <div class="d-flex justify-content-center align-items-center gap-3 mb-4">
                     <span class="badge bg-primary status-badge px-4 py-2">
                         <i class="bi bi-building me-1"></i>{{ workplan.mda }}
@@ -130,7 +130,7 @@
                                 <div class="progress-bar bg-{% if workplan.completion_progress >= 90 %}success{% elif workplan.completion_progress >= 70 %}warning{% else %}primary{% endif %}" 
                                      role="progressbar" 
                                      style="width: {{ workplan.completion_progress }}%">
-                                   {{ workplan.completion_progress }}%
+                                  {{ workplan.completion_progress }}%
                                 </div>
                             </div>
                             <div class="text-center">
@@ -150,7 +150,7 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-bold small">Approval Note</label>
                                     <textarea name="admin_comment" class="form-control form-control-sm" rows="2" 
-                                            placeholder="Optional approval comment..."></textarea>
+                                              placeholder="Optional approval comment..."></textarea>
                                 </div>
                                 <button type="submit" class="btn btn-success w-100 mb-2">
                                     <i class="bi bi-check-circle-fill me-1"></i>✅ APPROVE
@@ -162,7 +162,7 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-bold small text-danger">Rejection Reason *</label>
                                     <textarea name="admin_comment" class="form-control form-control-sm" rows="2" required
-                                            placeholder="Required rejection reason..."></textarea>
+                                              placeholder="Required rejection reason..."></textarea>
                                 </div>
                                 <button type="submit" class="btn btn-danger w-100" 
                                         onclick="return confirm('Reject this workplan?')">
@@ -173,40 +173,49 @@
                         {% endif %}
 
                         <!-- Departments -->
-                       <!-- Departments - FIXED TEXT VISIBILITY -->
-<div class="workplan-card p-4">
-    <h6 class="section-header mb-3">
-        <i class="bi bi-people text-secondary"></i> Departments
-    </h6>
-    <div class="mb-3">
-        <strong class="text-dark">Assigned:</strong><br>
-        <span class="badge bg-secondary w-100 mb-1">{{ workplan.assigned_dept }}</span>
-    </div>
-    {% if workplan.collaborating_dept %}
-    <div>
-        <strong class="text-dark">Collaborating:</strong><br>
-        <!-- 🔥 FIXED: Dark text instead of outline -->
-        <span class="badge bg-primary text-white w-100">{{ workplan.collaborating_dept }}</span>
-    </div>
-    {% endif %}
-</div>
-
+                        <div class="workplan-card p-4">
+                            <h6 class="section-header mb-3">
+                                <i class="bi bi-people text-secondary"></i> Departments
+                            </h6>
+                            <div class="mb-3">
+                                <strong class="text-dark">Assigned:</strong><br>
+                                <span class="badge bg-secondary w-100 mb-1">{{ workplan.assigned_dept }}</span>
+                            </div>
+                            {% if workplan.collaborating_dept %}
+                            <div>
+                                <strong class="text-dark">Collaborating:</strong><br>
+                                <span class="badge bg-primary text-white w-100">{{ workplan.collaborating_dept }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Action Buttons -->
+        <!-- 🔥 ACTION BUTTONS - HIDE EDIT FOR USERS WHEN APPROVED -->
         <div class="workplan-card p-4 mt-4">
             <div class="d-flex justify-content-center gap-3">
+                {% if current_user.is_admin() or current_user.is_superadmin() or 
+                      (workplan.created_by == current_user.id and workplan.status != 'Approved') %}
                 <a href="{{ url_for('edit_workplan', id=workplan.id) }}" class="btn btn-primary btn-modern btn-lg">
                     <i class="bi bi-pencil-square me-2"></i>Edit Workplan
                 </a>
+                {% endif %}
                 <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-modern btn-lg">
                     <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
                 </a>
+                {% if workplan.status == 'Approved' %}
+                <a href="{{ url_for('download_workplan_pdf', workplan_id=workplan.id) }}" class="btn btn-success btn-modern btn-lg">
+                    <i class="bi bi-file-earmark-pdf me-2"></i>Download PDF
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
+<style>
+.workplan-card { background: #fff !important; color: #212529 !important; }
+.form-label { color: #212529 !important; }
+</style>

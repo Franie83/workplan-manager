@@ -1,121 +1,250 @@
 {% extends 'base.html' %}
+{% block title %}Edit {{ workplan.project_title }}{% endblock %}
+
 {% block content %}
-<h2>Edit Workplan</h2>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- HEADER -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold text-dark bg-white px-3 py-2 rounded shadow-sm">
+                    <i class="bi bi-pencil me-2"></i>Edit {{ workplan.project_title }}
+                </h2>
+                <div>
+                    <a href="{{ url_for('view_workplan', id=workplan.id) }}" 
+                       class="btn btn-outline-primary me-2">
+                        <i class="bi bi-eye"></i> View
+                    </a>
+                    <a href="{{ url_for('index') }}" 
+                       class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
 
-<!-- CLOSE MAIN FORM FIRST -->
-</form>
+            <!-- 🔥 STATUS WARNING -->
+            {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+            <div class="alert alert-success mb-4">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <strong>✅ This workplan is APPROVED</strong><br>
+                <small class="text-muted">Approved workplans are read-only for regular users. Contact admin for changes.</small>
+            </div>
+            {% endif %}
 
-<!-- DYNAMIC DELIVERABLES -->
-<div class="mb-4">
-    <label class="form-label fw-bold">Deliverables ({{ workplan.deliverables|length }})</label>
-    {% for deliverable in workplan.deliverables %}
-    <div class="border p-3 mb-2 bg-light rounded">
-        <div class="d-flex justify-content-between align-items-center">
-            <span>• {{ deliverable.description }}</span>
-            <a href="{{ url_for('delete_deliverable', deliverable_id=deliverable.id) }}" 
-               class="btn btn-sm btn-outline-danger" 
-               onclick="return confirm('Delete this deliverable?')">×</a>
+            <!-- 🔥 MAIN WORKPLAN FORM -->
+            <form method="POST" action="{{ url_for('edit_workplan', id=workplan.id) }}">
+                {{ form.hidden_tag() }}
+                
+                <!-- Workplan Details -->
+                <div class="card shadow workplan-card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Workplan Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- MDA -->
+                            <div class="col-md-6">
+                                {{ form.mda.label(class="form-label fw-bold") }}
+                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+                                    {{ form.mda(class="form-control", disabled=True) }}
+                                {% else %}
+                                    {{ form.mda(class="form-control") }}
+                                {% endif %}
+                            </div>
+
+                            <!-- Project Title -->
+                            <div class="col-md-6">
+                                {{ form.project_title.label(class="form-label fw-bold") }}
+                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+                                    {{ form.project_title(class="form-control", disabled=True) }}
+                                {% else %}
+                                    {{ form.project_title(class="form-control") }}
+                                {% endif %}
+                            </div>
+
+                            <!-- Objective -->
+                            <div class="col-12">
+                                {{ form.objective.label(class="form-label fw-bold") }}
+                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+                                    {{ form.objective(class="form-control", rows=3, disabled=True) }}
+                                {% else %}
+                                    {{ form.objective(class="form-control", rows=3) }}
+                                {% endif %}
+                            </div>
+
+                            <!-- Assigned Dept -->
+                            <div class="col-md-6">
+                                {{ form.assigned_dept.label(class="form-label fw-bold") }}
+                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+                                    {{ form.assigned_dept(class="form-control", disabled=True) }}
+                                {% else %}
+                                    {{ form.assigned_dept(class="form-control") }}
+                                {% endif %}
+                            </div>
+
+                            <!-- Collaborating Dept -->
+                            <div class="col-md-6">
+                                {{ form.collaborating_dept.label(class="form-label fw-bold") }}
+                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+                                    {{ form.collaborating_dept(class="form-control", disabled=True) }}
+                                {% else %}
+                                    {{ form.collaborating_dept(class="form-control") }}
+                                {% endif %}
+                            </div>
+
+                            <!-- Start Date -->
+                            <div class="col-md-4">
+                                {{ form.start_date.label(class="form-label fw-bold") }}
+                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+                                    {{ form.start_date(class="form-control", disabled=True) }}
+                                {% else %}
+                                    {{ form.start_date(class="form-control") }}
+                                {% endif %}
+                            </div>
+
+                            <!-- End Date -->
+                            <div class="col-md-4">
+                                {{ form.end_date.label(class="form-label fw-bold") }}
+                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+                                    {{ form.end_date(class="form-control", disabled=True) }}
+                                {% else %}
+                                    {{ form.end_date(class="form-control") }}
+                                {% endif %}
+                            </div>
+
+                            <!-- Duration -->
+                            <div class="col-md-4">
+                                {{ form.duration.label(class="form-label fw-bold") }}
+                                {{ form.duration(class="form-control bg-light", readonly=True) }}
+                            </div>
+
+                            <!-- Completion Percentage -->
+                            <div class="col-md-6">
+                                {{ form.completion_percentage.label(class="form-label fw-bold") }}
+                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+                                    {{ form.completion_percentage(class="form-control", type="number", min="0", max="100", disabled=True) }}
+                                {% else %}
+                                    {{ form.completion_percentage(class="form-control", type="number", min="0", max="100") }}
+                                {% endif %}
+                            </div>
+
+                            <!-- Status -->
+                            <div class="col-md-6">
+                                {{ form.status.label(class="form-label fw-bold") }}
+                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
+                                    {{ form.status(class="form-select", disabled=True) }}
+                                {% else %}
+                                    {{ form.status(class="form-select") }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🔥 SAVE BUTTONS -->
+                <div class="mt-4">
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-lg me-2"></i>Save Workplan
+                        </button>
+                        {% else %}
+                        <button type="button" class="btn btn-primary btn-lg" disabled>
+                            <i class="bi bi-lock-fill me-2"></i>Read Only - Approved
+                        </button>
+                        {% endif %}
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <!-- 🔥 DELIVERABLES SECTION -->
+            <div class="card shadow workplan-card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Deliverables ({{ workplan.deliverables|length or 0 }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if workplan.deliverables %}
+                        {% for deliverable in workplan.deliverables %}
+                        <div class="border p-3 mb-2 bg-light rounded d-flex justify-content-between align-items-center">
+                            <span>• {{ deliverable.description }}</span>
+                            {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                            <a href="{{ url_for('delete_deliverable', deliverable_id=deliverable.id) }}" 
+                               class="btn btn-sm btn-outline-danger" 
+                               onclick="return confirm('Delete this deliverable?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-3">No deliverables added yet.</p>
+                    {% endif %}
+                    
+                    {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                    <form method="POST" action="{{ url_for('add_deliverable', workplan_id=workplan.id) }}" class="mt-3">
+                        <div class="input-group">
+                            <input type="text" name="description" class="form-control" 
+                                   placeholder="Enter new deliverable..." required>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-plus"></i> Add
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 🔥 KPIs SECTION -->
+            <div class="card shadow workplan-card mt-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">KPIs ({{ workplan.kpis|length or 0 }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if workplan.kpis %}
+                        {% for kpi in workplan.kpis %}
+                        <div class="border p-3 mb-2 bg-light rounded d-flex justify-content-between align-items-center">
+                            <span>• {{ kpi.description }}</span>
+                            {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                            <a href="{{ url_for('delete_kpi', kpi_id=kpi.id) }}" 
+                               class="btn btn-sm btn-outline-danger" 
+                               onclick="return confirm('Delete this KPI?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-3">No KPIs added yet.</p>
+                    {% endif %}
+                    
+                    {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                    <form method="POST" action="{{ url_for('add_kpi', workplan_id=workplan.id) }}" class="mt-3">
+                        <div class="input-group">
+                            <input type="text" name="description" class="form-control" 
+                                   placeholder="Enter new KPI..." required>
+                            <button type="submit" class="btn btn-warning text-dark">
+                                <i class="bi bi-plus"></i> Add
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
-    {% endfor %}
-    
-    <!-- STANDALONE DELIVERABLE FORM (NO NESTING) -->
-    <form method="POST" action="{{ url_for('add_deliverable', workplan_id=workplan.id) }}" 
-          class="border p-3 bg-light rounded mt-3">
-        <div class="input-group input-group-sm">
-            <input type="text" name="description" class="form-control" 
-                   placeholder="Enter new deliverable..." required>
-            <button type="submit" class="btn btn-success">Add Deliverable</button>
-        </div>
-    </form>
 </div>
 
-<!-- DYNAMIC KPIs -->
-<div class="mb-4">
-    <label class="form-label fw-bold">KPIs ({{ workplan.kpis|length }})</label>
-    {% for kpi in workplan.kpis %}
-    <div class="border p-3 mb-2 bg-light rounded">
-        <div class="d-flex justify-content-between align-items-center">
-            <span>• {{ kpi.description }}</span>
-            <a href="{{ url_for('delete_kpi', kpi_id=kpi.id) }}" 
-               class="btn btn-sm btn-outline-danger" 
-               onclick="return confirm('Delete this KPI?')">×</a>
-        </div>
-    </div>
-    {% endfor %}
-    
-    <!-- STANDALONE KPI FORM (NO NESTING) -->
-    <form method="POST" action="{{ url_for('add_kpi', workplan_id=workplan.id) }}" 
-          class="border p-3 bg-light rounded mt-3">
-        <div class="input-group input-group-sm">
-            <input type="text" name="description" class="form-control" 
-                   placeholder="Enter new KPI..." required>
-            <button type="submit" class="btn btn-success">Add KPI</button>
-        </div>
-    </form>
-</div>
-
-<!-- RE-OPEN MAIN WORKPLAN FORM -->
-<form method="POST">
-    {{ form.hidden_tag() }}
-    
-    <!-- MDA FIELD -->
-    <div class="mb-3">
-        {{ form.mda.label(class="form-label") }}
-        {{ form.mda(class="form-control") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.project_title.label(class="form-label") }}
-        {{ form.project_title(class="form-control") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.objective.label(class="form-label") }}
-        {{ form.objective(class="form-control", rows=3) }}
-    </div>
-
-    <!-- REST OF FORM FIELDS -->
-    <div class="mb-3">
-        {{ form.assigned_dept.label(class="form-label") }}
-        {{ form.assigned_dept(class="form-control") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.collaborating_dept.label(class="form-label") }}
-        {{ form.collaborating_dept(class="form-control") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.start_date.label(class="form-label") }}
-        {{ form.start_date(class="form-control", type="date") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.end_date.label(class="form-label") }}
-        {{ form.end_date(class="form-control", type="date") }}
-    </div>
-    
-    <div class="mb-3">
-        {{ form.duration.label(class="form-label") }}
-        {{ form.duration(class="form-control", readonly=True) }}
-        <small class="form-text text-muted">Auto-calculated from dates</small>
-    </div>
-    
-    <div class="mb-3">
-        {{ form.completion_percentage.label(class="form-label") }}
-        {{ form.completion_percentage(class="form-control", type="number", min="0", max="100") }}
-        <small class="form-text text-muted">Manual progress estimate (0-100%)</small>
-    </div>
-    
-    <div class="mb-3">
-        {{ form.status.label(class="form-label") }}
-        {{ form.status(class="form-select") }}
-    </div>
-    
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-        <button type="submit" class="btn btn-primary me-md-2">Save Workplan</button>
-        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
-    </div>
-</form>
+<style>
+.workplan-card { background: #fff !important; color: #212529 !important; }
+.form-label { color: #212529 !important; }
+.form-control, .form-select { background: #fff !important; color: #212529 !important; }
+.form-control:disabled, .form-select:disabled { 
+    background-color: #f8f9fa !important; 
+    opacity: 0.6; 
+    cursor: not-allowed !important; 
+}
+</style>
 {% endblock %}

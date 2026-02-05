@@ -122,17 +122,16 @@
                         <i class="bi bi-eye me-1"></i> View Details
                     </a>
                     
-                    <!-- 🔥 EDIT BUTTON - Owner or Superadmin -->
-                    {% if workplan.created_by == current_user.id or current_user.is_superadmin() %}
-                    {% if workplan.status != 'Pending' %}
+                    <!-- 🔥 EDIT BUTTON - HIDE FOR USERS WHEN APPROVED -->
+                    {% if current_user.is_admin() or current_user.is_superadmin() or 
+                          (workplan.created_by == current_user.id and workplan.status != 'Approved') %}
                     <a href="{{ url_for('edit_workplan', id=workplan.id) }}" class="btn btn-primary btn-modern btn-lg">
                         <i class="bi bi-pencil me-1"></i> Edit
                     </a>
                     {% endif %}
-                    {% endif %}
                     
-                    <!-- 🔥 DELETE BUTTON - Superadmin ONLY -->
-                    {% if current_user.is_superadmin() %}
+                    <!-- 🔥 DELETE BUTTON - Owner OR Superadmin -->
+                    {% if workplan.created_by == current_user.id or current_user.is_superadmin() %}
                     <a href="{{ url_for('delete_workplan', id=workplan.id) }}" 
                        class="btn btn-outline-danger btn-modern btn-lg"
                        onclick="return confirm('🗑️ Delete {{ workplan.project_title }}?\nThis cannot be undone.')">

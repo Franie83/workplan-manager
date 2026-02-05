@@ -118,6 +118,7 @@
             font-size: 0.8rem;
             padding: 0.4em 0.8em;
         }
+        
     </style>
 </head>
 <body>
@@ -198,7 +199,8 @@
                             <small class="d-block text-muted">{{ current_user.email }}</small>
                         </div></li>
                         {% if current_user.is_superadmin() %}
-                        <li><a class="dropdown-item" href="{{ url_for('manage_users') }}"><i class="bi bi-people-fill text-warning me-2"></i>Superadmin Panel</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('superadmin_users_list') }}"><i class="bi bi-people-fill text-warning me-2"></i>Users (Superadmin)</a></li>
+
                         {% elif current_user.is_admin() %}
                         <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}"><i class="bi bi-shield-check me-2"></i>Admin Dashboard</a></li>
                         {% endif %}
