@@ -1,0 +1,750 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Header Section -->
+        <div class="workplan-card mb-4 p-5">
+            <div class="text-center mb-5">
+                <h1 class="display-5 fw-bold text-primary mb-2 bg-white px-4 py-2 rounded shadow">{{ workplan.project_title }}</h1>
+                <div class="d-flex justify-content-center align-items-center gap-3 mb-4">
+                    <span class="badge bg-primary status-badge px-4 py-2">
+                        <i class="bi bi-building me-1"></i>{{ workplan.mda }}
+                    </span>
+                    <span class="badge bg-{% if workplan.status == 'Completed' %}success{% elif workplan.status == 'Approved' %}success{% elif workplan.status == 'Ongoing' or workplan.status == 'Started' %}warning{% elif workplan.status == 'Pending' %}warning{% else %}dark{% endif %} status-badge px-4 py-2">
+                        {{ workplan.status }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- 🔥 STATUS SUMMARY - All users see -->
+            <div class="alert alert-{% if workplan.status == 'Approved' %}success{% elif workplan.status == 'Rejected' %}danger{% else %}warning{% endif %} mb-4">
+                {% if workplan.status == 'Approved' %}
+                    <i class="bi bi-check-circle-fill fs-3 me-2"></i>
+                    <strong>✅ APPROVED</strong> by {{ workplan.approver.username if workplan.approver else 'Admin' }} 
+                    {% if workplan.approved_at %}on {{ workplan.approved_at.strftime('%Y-%m-%d') }}{% endif %}
+                    {% if workplan.admin_comment %}
+                        <br><small><em>"{{ workplan.admin_comment[:100] }}..."</em></small>
+                    {% endif %}
+                {% elif workplan.status == 'Rejected' %}
+                    <i class="bi bi-x-circle-fill fs-3 me-2"></i>
+                    <strong>❌ REJECTED</strong> by {{ workplan.approver.username if workplan.approver else 'Admin' }}
+                    {% if workplan.admin_comment %}
+                        <br><small><em>"{{ workplan.admin_comment }}"</em></small>
+                    {% endif %}
+                {% else %}
+                    <i class="bi bi-hourglass-split fs-3 me-2"></i>
+                    <strong>⏳ PENDING APPROVAL</strong> - Awaiting admin review
+                {% endif %}
+            </div>
+
+            <div class="row g-4">
+                <!-- Left Column -->
+                <div class="col-lg-8">
+                    <!-- Objective (Read-only) -->
+                    <div class="bg-light p-4 rounded-3 mb-4">
+                        <h5 class="section-header mb-3">
+                            <i class="bi bi-lightbulb text-warning"></i> Objective
+                        </h5>
+                        <p class="lead text-dark">{{ workplan.objective }}</p>
+                    </div>
+
+                    <!-- 🔥 Deliverables with completion status, checkboxes, and evidence upload -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="section-header mb-0">
+                                <i class="bi bi-check2-square text-success"></i> Deliverables 
+                                <span class="badge bg-success ms-2">{{ workplan.deliverables|length }}</span>
+                                {% if workplan.deliverables %}
+                                <span class="badge bg-info ms-2">
+                                    {{ workplan.deliverables|selectattr('completed', 'equalto', true)|list|length }}/{{ workplan.deliverables|length }} Complete
+                                </span>
+                                {% endif %}
+                            </h5>
+                            <!-- 🔥 Progress indicator -->
+                            <span class="badge bg-primary fs-6">
+                                {{ workplan.completion_from_deliverables }}% Complete
+                            </span>
+                        </div>
+                        
+                        {% if workplan.deliverables %}
+                            <div class="row g-3">
+                                {% for deliverable in workplan.deliverables %}
+                                <div class="col-12">
+                                    <div class="deliverable-item p-3 rounded-3 {% if deliverable.completed %}bg-success bg-opacity-10 border-success{% endif %}" 
+                                         id="deliverable-{{ deliverable.id }}">
+                                        <div class="d-flex align-items-start">
+                                            <!-- 🔥 CHECKBOX -->
+                                            <div class="form-check me-3 mt-1">
+                                                <input type="checkbox" 
+                                                       class="form-check-input deliverable-checkbox" 
+                                                       data-id="{{ deliverable.id }}"
+                                                       data-workplan="{{ workplan.id }}"
+                                                       {% if deliverable.completed %}checked{% endif %}
+                                                       {% if workplan.created_by != current_user.id and not current_user.is_admin() %}disabled{% endif %}>
+                                            </div>
+                                            
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <strong class="{% if deliverable.completed %}text-success{% endif %}">
+                                                            {{ deliverable.description }}
+                                                        </strong>
+                                                        {% if deliverable.completed %}
+                                                        <span class="badge bg-success ms-2">✓ Completed</span>
+                                                        {% if deliverable.completed_at %}
+                                                        <small class="text-muted d-block mt-1">
+                                                            Completed: {{ deliverable.completed_at.strftime('%Y-%m-%d') }}
+                                                        </small>
+                                                        {% endif %}
+                                                        {% endif %}
+                                                    </div>
+                                                    
+                                                    <!-- 🔥 UPLOAD BUTTON - Only for owner/admin -->
+                                                    {% if workplan.created_by == current_user.id or current_user.is_admin() %}
+                                                    <button class="btn btn-sm btn-outline-primary upload-evidence-btn" 
+                                                            data-deliverable-id="{{ deliverable.id }}">
+                                                        <i class="bi bi-cloud-upload me-1"></i>Upload Evidence
+                                                    </button>
+                                                    {% endif %}
+                                                </div>
+                                                
+                                                <!-- 🔥 EVIDENCE FILES SECTION -->
+                                                {% if deliverable.evidence_files %}
+                                                <div class="mt-3 p-2 bg-white rounded border">
+                                                    <small class="text-primary fw-bold">
+                                                        <i class="bi bi-paperclip me-1"></i>Evidence Files:
+                                                    </small>
+                                                    <div class="mt-2 evidence-list" id="evidence-list-{{ deliverable.id }}">
+                                                        {% for evidence in deliverable.evidence_files %}
+                                                        <div class="d-flex justify-content-between align-items-center p-2 mb-1 bg-light rounded evidence-item" 
+                                                             id="evidence-{{ evidence.id }}">
+                                                            <div class="d-flex align-items-center">
+                                                                <!-- File type icon -->
+                                                                {% if evidence.file_type == 'image' %}
+                                                                    <i class="bi bi-file-image text-success me-2"></i>
+                                                                {% elif evidence.file_type == 'video' %}
+                                                                    <i class="bi bi-file-play text-danger me-2"></i>
+                                                                {% else %}
+                                                                    <i class="bi bi-file-text text-primary me-2"></i>
+                                                                {% endif %}
+                                                                
+                                                                <!-- File link with preview for images -->
+                                                                {% if evidence.file_type == 'image' %}
+                                                                <a href="#" class="text-decoration-none image-preview-link" 
+                                                                   data-bs-toggle="modal" 
+                                                                   data-bs-target="#imageModal"
+                                                                   data-image-url="{{ url_for('download_evidence', evidence_id=evidence.id) }}"
+                                                                   data-filename="{{ evidence.filename }}">
+                                                                    {{ evidence.filename }}
+                                                                </a>
+                                                                {% elif evidence.file_type == 'video' %}
+                                                                <a href="#" class="text-decoration-none video-preview-link"
+                                                                   data-bs-toggle="modal" 
+                                                                   data-bs-target="#videoModal"
+                                                                   data-video-url="{{ url_for('download_evidence', evidence_id=evidence.id) }}"
+                                                                   data-filename="{{ evidence.filename }}">
+                                                                    {{ evidence.filename }}
+                                                                </a>
+                                                                {% else %}
+                                                                <a href="{{ url_for('download_evidence', evidence_id=evidence.id) }}" 
+                                                                   target="_blank" class="text-decoration-none">
+                                                                    {{ evidence.filename }}
+                                                                </a>
+                                                                {% endif %}
+                                                                
+                                                                <small class="text-muted ms-2">
+                                                                    ({{ evidence.file_size_formatted }})
+                                                                </small>
+                                                                <small class="text-muted ms-2">
+                                                                    {{ evidence.uploaded_at.strftime('%Y-%m-%d') }}
+                                                                </small>
+                                                            </div>
+                                                            
+                                                            <!-- 🔥 DELETE EVIDENCE BUTTON - Only for owner/admin -->
+                                                            {% if workplan.created_by == current_user.id or current_user.is_admin() %}
+                                                            <button class="btn btn-sm btn-outline-danger delete-evidence-btn" 
+                                                                    data-evidence-id="{{ evidence.id }}"
+                                                                    data-deliverable-id="{{ deliverable.id }}">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                            {% endif %}
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                                {% else %}
+                                                <div class="mt-2 evidence-list" id="evidence-list-{{ deliverable.id }}">
+                                                    <!-- Empty state - will be populated by JavaScript -->
+                                                </div>
+                                                {% endif %}
+                                                
+                                                <!-- Hidden file input for this deliverable -->
+                                                <input type="file" 
+                                                       class="d-none evidence-file-input" 
+                                                       id="file-input-{{ deliverable.id }}" 
+                                                       data-deliverable-id="{{ deliverable.id }}" 
+                                                       accept=".png,.jpg,.jpeg,.gif,.bmp,.webp,.mp4,.mov,.avi,.mkv,.webm,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4 bg-light rounded-3">
+                                <i class="bi bi-inbox text-muted fs-1 mb-3"></i>
+                                <p class="text-muted">No deliverables added yet.</p>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- 🔥 Note for users -->
+                        {% if workplan.created_by == current_user.id and workplan.deliverables %}
+                        <div class="alert alert-info mt-3 mb-0 py-2">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <small>✓ Check/uncheck deliverables to update progress. Upload evidence files (images, videos, documents) to support completion.</small>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- KPIs (Read-only) -->
+                    <div class="mb-5">
+                        <h5 class="section-header">
+                            <i class="bi bi-graph-up text-primary"></i> KPIs 
+                            <span class="badge bg-primary ms-2">{{ workplan.kpis|length }}</span>
+                        </h5>
+                        {% if workplan.kpis %}
+                            <div class="row g-3">
+                                {% for kpi in workplan.kpis %}
+                                <div class="col-md-6">
+                                    <div class="kpi-item p-3 rounded-3">
+                                        <i class="bi bi-circle-fill text-primary me-2"></i>
+                                        <strong>{{ kpi.description }}</strong>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4 bg-light rounded-3">
+                                <i class="bi bi-inbox text-muted fs-1 mb-3"></i>
+                                <p class="text-muted">No KPIs added yet.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Right Column - Stats (Read-only) -->
+                <div class="col-lg-4">
+                    <div class="sticky-top" style="top: 2rem;">
+                        <!-- Timeline -->
+                        <div class="workplan-card p-4 mb-4">
+                            <h6 class="section-header mb-3">
+                                <i class="bi bi-calendar-range text-info"></i> Timeline
+                            </h6>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Start:</span>
+                                <strong>{{ workplan.start_date.strftime('%Y-%m-%d') }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="text-muted">End:</span>
+                                <strong>{{ workplan.end_date.strftime('%Y-%m-%d') }}</strong>
+                            </div>
+                            <div class="alert alert-info d-flex align-items-center">
+                                <i class="bi bi-clock me-2"></i>
+                                <strong>{{ workplan.duration_days }} days</strong>
+                            </div>
+                        </div>
+
+                        <!-- Progress Summary -->
+                        <div class="workplan-card p-4 mb-4">
+                            <h6 class="section-header mb-4">
+                                <i class="bi bi-graph-up-arrow text-success"></i> Progress
+                            </h6>
+                            <div class="progress-custom mb-3">
+                                {% set completion = workplan.completion_from_deliverables %}
+                                <div class="progress-bar bg-{% if completion >= 90 %}success{% elif completion >= 70 %}warning{% else %}primary{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ completion }}%">
+                                  {{ completion }}%
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <small class="text-muted">{{ completion }}% Complete</small>
+                                {% if workplan.deliverables %}
+                                <br>
+                                <small class="text-muted">
+                                    ({{ workplan.deliverables|selectattr('completed', 'equalto', true)|list|length }} of {{ workplan.deliverables|length }} deliverables completed)
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- 🔥 ADMIN APPROVAL SECTION (Pending + Admin Only) -->
+                        {% if workplan.status == 'Pending' and current_user.is_admin() %}
+                        <div class="workplan-card border-warning p-4 mb-4">
+                            <h6 class="section-header mb-4 text-warning">
+                                <i class="bi bi-shield-check me-2"></i>Admin Action Required
+                            </h6>
+                            
+                            <!-- APPROVE -->
+                            <form method="POST" action="{{ url_for('approve_workplan', workplan_id=workplan.id) }}" class="mb-3">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">Approval Note</label>
+                                    <textarea name="admin_comment" class="form-control form-control-sm" rows="2" 
+                                              placeholder="Optional approval comment..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100 mb-2">
+                                    <i class="bi bi-check-circle-fill me-1"></i>✅ APPROVE
+                                </button>
+                            </form>
+                            
+                            <!-- REJECT -->
+                            <form method="POST" action="{{ url_for('reject_workplan', workplan_id=workplan.id) }}">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-danger">Rejection Reason *</label>
+                                    <textarea name="admin_comment" class="form-control form-control-sm" rows="2" required
+                                              placeholder="Required rejection reason..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-danger w-100" 
+                                        onclick="return confirm('Reject this workplan?')">
+                                    <i class="bi bi-x-circle-fill me-1"></i>❌ REJECT
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+
+                        <!-- Departments -->
+                        <div class="workplan-card p-4">
+                            <h6 class="section-header mb-3">
+                                <i class="bi bi-people text-secondary"></i> Departments
+                            </h6>
+                            <div class="mb-3">
+                                <strong class="text-dark">Assigned:</strong><br>
+                                <span class="badge bg-secondary w-100 mb-1">{{ workplan.assigned_dept }}</span>
+                            </div>
+                            {% if workplan.collaborating_dept %}
+                            <div>
+                                <strong class="text-dark">Collaborating:</strong><br>
+                                <span class="badge bg-primary text-white w-100">{{ workplan.collaborating_dept }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔥 ACTION BUTTONS -->
+        <div class="workplan-card p-4 mt-4">
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-modern btn-lg">
+                    <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                </a>
+                {% if workplan.status == 'Approved' %}
+                <a href="{{ url_for('download_workplan_pdf', workplan_id=workplan.id) }}" class="btn btn-success btn-modern btn-lg">
+                    <i class="bi bi-file-earmark-pdf me-2"></i>Download PDF
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 🔥 Image Preview Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalTitle">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" id="modalImage" class="img-fluid" alt="Preview">
+            </div>
+            <div class="modal-footer">
+                <a href="" id="downloadImageBtn" class="btn btn-primary" download>
+                    <i class="bi bi-download me-2"></i>Download
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 🔥 Video Preview Modal -->
+<div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="videoModalTitle">Video Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <video controls class="w-100">
+                    <source src="" id="modalVideo" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <div class="modal-footer">
+                <a href="" id="downloadVideoBtn" class="btn btn-primary" download>
+                    <i class="bi bi-download me-2"></i>Download
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 🔥 JavaScript for checkbox handling and evidence upload -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.deliverable-checkbox');
+    
+    // Only proceed if user can edit (workplan owner or admin)
+    const canEdit = {{ 'true' if workplan.created_by == current_user.id or current_user.is_admin() else 'false' }};
+    
+    if (!canEdit) {
+        console.log('User cannot edit deliverables');
+        return;
+    }
+    
+    // Checkbox change handler
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const deliverableId = this.dataset.id;
+            const workplanId = this.dataset.workplan;
+            const isChecked = this.checked;
+            const deliverableItem = this.closest('.deliverable-item');
+            const progressBadge = document.querySelector('.badge.bg-primary.fs-6');
+            const completionBadge = document.querySelector('.progress-bar');
+            
+            // Store original state for rollback
+            const originalChecked = !isChecked;
+            
+            // Send AJAX request to toggle completion
+            fetch(`/toggle_deliverable/${deliverableId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update UI to reflect new state
+                    if (isChecked) {
+                        deliverableItem.classList.add('bg-success', 'bg-opacity-10', 'border-success');
+                        const strongTag = deliverableItem.querySelector('strong');
+                        if (strongTag) strongTag.classList.add('text-success');
+                        
+                        // Add completed badge if not present
+                        if (!deliverableItem.querySelector('.badge.bg-success.ms-2')) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-success ms-2';
+                            badge.textContent = '✓ Completed';
+                            strongTag.parentNode.insertBefore(badge, strongTag.nextSibling);
+                        }
+                    } else {
+                        deliverableItem.classList.remove('bg-success', 'bg-opacity-10', 'border-success');
+                        const strongTag = deliverableItem.querySelector('strong');
+                        if (strongTag) strongTag.classList.remove('text-success');
+                        
+                        // Remove completed badge
+                        const badge = deliverableItem.querySelector('.badge.bg-success.ms-2');
+                        if (badge) badge.remove();
+                    }
+                    
+                    // Update progress displays
+                    if (progressBadge) {
+                        progressBadge.textContent = data.new_completion + '% Complete';
+                    }
+                    
+                    // Update progress bar if it exists
+                    if (completionBadge) {
+                        completionBadge.style.width = data.new_completion + '%';
+                        completionBadge.textContent = data.new_completion + '%';
+                    }
+                    
+                    // Update the completed count badge
+                    const countBadge = document.querySelector('.badge.bg-info.ms-2');
+                    if (countBadge) {
+                        countBadge.textContent = `${data.completed_count}/${data.total_count} Complete`;
+                    }
+                    
+                    showNotification('Progress updated!', 'success');
+                } else {
+                    // Revert checkbox
+                    this.checked = originalChecked;
+                    showNotification(data.error || 'Error updating progress', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.checked = originalChecked;
+                showNotification('Connection error', 'danger');
+            });
+        });
+    });
+    
+    // File upload handling
+    document.querySelectorAll('.upload-evidence-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const deliverableId = this.dataset.deliverableId;
+            document.getElementById(`file-input-${deliverableId}`).click();
+        });
+    });
+
+    document.querySelectorAll('.evidence-file-input').forEach(input => {
+        input.addEventListener('change', function() {
+            const deliverableId = this.dataset.deliverableId;
+            const file = this.files[0];
+            
+            if (!file) return;
+            
+            // Check file size (max 50MB)
+            if (file.size > 50 * 1024 * 1024) {
+                showNotification('File too large. Max 50MB', 'danger');
+                this.value = '';
+                return;
+            }
+            
+            // Show loading state
+            const evidenceList = document.getElementById(`evidence-list-${deliverableId}`);
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'text-center p-2 loading-indicator';
+            loadingDiv.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div> Uploading...';
+            evidenceList.prepend(loadingDiv);
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Upload file
+            fetch(`/upload_evidence/${deliverableId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingDiv.remove();
+                
+                if (data.success) {
+                    // Add evidence to list
+                    const evidenceHtml = createEvidenceItem(data.evidence, deliverableId);
+                    
+                    // Remove "No evidence" message if present (but we don't have one in this version)
+                    evidenceList.insertAdjacentHTML('afterbegin', evidenceHtml);
+                    
+                    // Auto-check the deliverable if not already checked
+                    const checkbox = document.querySelector(`.deliverable-checkbox[data-id="${deliverableId}"]`);
+                    if (checkbox && !checkbox.checked) {
+                        checkbox.checked = true;
+                        // Trigger the change event to update completion
+                        checkbox.dispatchEvent(new Event('change'));
+                    }
+                    
+                    showNotification('File uploaded successfully!', 'success');
+                } else {
+                    showNotification(data.error || 'Upload failed', 'danger');
+                }
+            })
+            .catch(error => {
+                loadingDiv.remove();
+                console.error('Error:', error);
+                showNotification('Upload failed', 'danger');
+            });
+            
+            // Clear input
+            this.value = '';
+        });
+    });
+
+    // Delete evidence
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-evidence-btn')) {
+            const btn = e.target.closest('.delete-evidence-btn');
+            const evidenceId = btn.dataset.evidenceId;
+            const deliverableId = btn.dataset.deliverableId;
+            const evidenceItem = document.getElementById(`evidence-${evidenceId}`);
+            
+            if (!confirm('Delete this evidence file?')) return;
+            
+            fetch(`/delete_evidence/${evidenceId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    evidenceItem.remove();
+                    showNotification('File deleted', 'success');
+                } else {
+                    showNotification('Delete failed', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Delete failed', 'danger');
+            });
+        }
+    });
+    
+    // Image preview modal
+    document.querySelectorAll('.image-preview-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const imageUrl = this.dataset.imageUrl;
+            const filename = this.dataset.filename;
+            
+            document.getElementById('modalImage').src = imageUrl;
+            document.getElementById('imageModalTitle').textContent = filename;
+            document.getElementById('downloadImageBtn').href = imageUrl;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+            modal.show();
+        });
+    });
+    
+    // Video preview modal
+    document.querySelectorAll('.video-preview-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const videoUrl = this.dataset.videoUrl;
+            const filename = this.dataset.filename;
+            
+            const videoElement = document.getElementById('modalVideo');
+            videoElement.src = videoUrl;
+            videoElement.load();
+            
+            document.getElementById('videoModalTitle').textContent = filename;
+            document.getElementById('downloadVideoBtn').href = videoUrl;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('videoModal'));
+            modal.show();
+        });
+    });
+
+    function createEvidenceItem(evidence, deliverableId) {
+        const fileIcon = evidence.file_type === 'image' ? 'file-image text-success' : 
+                        (evidence.file_type === 'video' ? 'file-play text-danger' : 'file-text text-primary');
+        
+        // Create appropriate preview link based on file type
+        let fileLink = '';
+        if (evidence.file_type === 'image') {
+            fileLink = `<a href="#" class="text-decoration-none image-preview-link" 
+                           data-bs-toggle="modal" data-bs-target="#imageModal"
+                           data-image-url="${evidence.url}" data-filename="${evidence.filename}">
+                           ${evidence.filename}
+                        </a>`;
+        } else if (evidence.file_type === 'video') {
+            fileLink = `<a href="#" class="text-decoration-none video-preview-link"
+                           data-bs-toggle="modal" data-bs-target="#videoModal"
+                           data-video-url="${evidence.url}" data-filename="${evidence.filename}">
+                           ${evidence.filename}
+                        </a>`;
+        } else {
+            fileLink = `<a href="${evidence.url}" target="_blank" class="text-decoration-none">
+                           ${evidence.filename}
+                        </a>`;
+        }
+        
+        return `
+            <div class="d-flex justify-content-between align-items-center p-2 mb-1 bg-light rounded evidence-item" 
+                 id="evidence-${evidence.id}">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-${fileIcon} me-2"></i>
+                    ${fileLink}
+                    <small class="text-muted ms-2">
+                        (${evidence.file_size_formatted})
+                    </small>
+                    <small class="text-muted ms-2">
+                        ${evidence.uploaded_at}
+                    </small>
+                </div>
+                <button class="btn btn-sm btn-outline-danger delete-evidence-btn" 
+                        data-evidence-id="${evidence.id}"
+                        data-deliverable-id="${deliverableId}">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
+    }
+    
+    function showNotification(message, type) {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+        alert.style.zIndex = '9999';
+        alert.style.minWidth = '300px';
+        alert.innerHTML = `
+            <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => alert.remove(), 3000);
+    }
+});
+</script>
+
+<style>
+.workplan-card { background: #fff !important; color: #212529 !important; }
+.form-label { color: #212529 !important; }
+.deliverable-item, .kpi-item {
+    transition: all 0.2s ease;
+    border: 1px solid #dee2e6;
+}
+.deliverable-item:hover {
+    background-color: #f8f9fa !important;
+}
+.kpi-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.bg-success.bg-opacity-10 {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+    border-color: #198754 !important;
+}
+.progress-custom {
+    height: 20px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.progress-bar {
+    line-height: 20px;
+    font-size: 12px;
+    font-weight: bold;
+}
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+.form-check-input:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+.form-check-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.evidence-item {
+    transition: all 0.2s ease;
+}
+.evidence-item:hover {
+    background-color: #e9ecef !important;
+}
+.loading-indicator {
+    color: #0d6efd;
+}
+.modal-body img, .modal-body video {
+    max-height: 70vh;
+    width: 100%;
+    object-fit: contain;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>{% if workplan %}Edit{% else %}Add{% endif %} Workplan</h2>
+
+<!-- CLOSE MAIN FORM BEFORE DYNAMIC SECTIONS -->
+</form>
+
+{% if workplan %}
+<!-- DYNAMIC DELIVERABLES (EDIT MODE ONLY) -->
+<div class="mb-4">
+    <label class="form-label fw-bold">Deliverables ({{ workplan.deliverables|length }})</label>
+    {% for deliverable in workplan.deliverables %}
+    <div class="border p-3 mb-2 bg-light rounded">
+        <div class="d-flex justify-content-between align-items-center">
+            <span>• {{ deliverable.description }}</span>
+            <a href="{{ url_for('delete_deliverable', deliverable_id=deliverable.id) }}" 
+               class="btn btn-sm btn-outline-danger" 
+               onclick="return confirm('Delete this deliverable?')">×</a>
+        </div>
+    </div>
+    {% endfor %}
+    
+    <!-- STANDALONE DELIVERABLE FORM -->
+    <form method="POST" action="{{ url_for('add_deliverable', workplan_id=workplan.id) }}" 
+          class="border p-3 bg-light rounded">
+        <div class="input-group input-group-sm">
+            <input type="text" name="description" class="form-control" 
+                   placeholder="Add new deliverable..." required>
+            <button type="submit" class="btn btn-success">Add Deliverable</button>
+        </div>
+    </form>
+</div>
+
+<!-- DYNAMIC KPIs (EDIT MODE ONLY) -->
+<div class="mb-4">
+    <label class="form-label fw-bold">KPIs ({{ workplan.kpis|length }})</label>
+    {% for kpi in workplan.kpis %}
+    <div class="border p-3 mb-2 bg-light rounded">
+        <div class="d-flex justify-content-between align-items-center">
+            <span>• {{ kpi.description }}</span>
+            <a href="{{ url_for('delete_kpi', kpi_id=kpi.id) }}" 
+               class="btn btn-sm btn-outline-danger" 
+               onclick="return confirm('Delete this KPI?')">×</a>
+        </div>
+    </div>
+    {% endfor %}
+    
+    <!-- STANDALONE KPI FORM -->
+    <form method="POST" action="{{ url_for('add_kpi', workplan_id=workplan.id) }}" 
+          class="border p-3 bg-light rounded">
+        <div class="input-group input-group-sm">
+            <input type="text" name="description" class="form-control" 
+                   placeholder="Add new KPI..." required>
+            <button type="submit" class="btn btn-success">Add KPI</button>
+        </div>
+    </form>
+</div>
+{% else %}
+<!-- ADD MODE INFO -->
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> 
+    Deliverables and KPIs can be added after saving (Edit mode)
+</div>
+{% endif %}
+
+<!-- RE-OPEN MAIN FORM -->
+<form method="POST">
+    {{ form.hidden_tag() }}
+    
+    <!-- MDA -->
+    <div class="mb-3">
+        {{ form.mda.label(class="form-label") }}
+        {{ form.mda(class="form-control") }}
+    </div>
+    
+    <!-- Project Title -->
+    <div class="mb-3">
+        {{ form.project_title.label(class="form-label") }}
+        {{ form.project_title(class="form-control") }}
+    </div>
+    
+    <!-- Objective -->
+    <div class="mb-3">
+        {{ form.objective.label(class="form-label") }}
+        {{ form.objective(class="form-control", rows=3) }}
+    </div>
+
+    <!-- Assigned Department -->
+    <div class="mb-3">
+        {{ form.assigned_dept.label(class="form-label") }}
+        {{ form.assigned_dept(class="form-control") }}
+    </div>
+    
+    <!-- Collaborating Department -->
+    <div class="mb-3">
+        {{ form.collaborating_dept.label(class="form-label") }}
+        {{ form.collaborating_dept(class="form-control") }}
+    </div>
+    
+    <!-- Dates -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.start_date.label(class="form-label") }}
+                {{ form.start_date(class="form-control", type="date") }}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.end_date.label(class="form-label") }}
+                {{ form.end_date(class="form-control", type="date") }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Duration -->
+    <div class="mb-3">
+        {{ form.duration.label(class="form-label") }}
+        {{ form.duration(class="form-control", readonly=True) }}
+        <small class="form-text text-muted">Auto-calculated from dates</small>
+    </div>
+    
+    <!-- 🔥 REMOVED: completion_percentage field -->
+    
+    <!-- Status -->
+    <div class="mb-3">
+        {{ form.status.label(class="form-label") }}
+        {{ form.status(class="form-select") }}
+    </div>
+    
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <button type="submit" class="btn btn-primary me-md-2">Save Workplan</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

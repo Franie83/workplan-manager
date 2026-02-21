@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}{% if users %}Superadmin Users{% else %}Admin Dashboard - Workplan Manager{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-11">
+        <!-- 🔥 SMART HEADER -->
+        {% if users %}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-white">
+                <i class="bi bi-people-fill me-2"></i>Superadmin Users ({{ users.total or users|length }})
+            </h2>
+            <a href="{{ url_for('superadmin_add_user') }}" class="btn btn-warning btn-modern">
+                <i class="bi bi-plus-circle me-2"></i>Add User
+            </a>
+        </div>
+        {% else %}
+        <!-- Original Dashboard Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold">
+                <i class="bi bi-shield-check text-primary me-2"></i>Admin Dashboard
+            </h2>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-modern me-2">
+                    <i class="bi bi-house-door me-1"></i>Dashboard
+                </a>
+                <a href="{{ url_for('pending_workplans') }}" class="btn btn-warning btn-modern me-2">
+                    <i class="bi bi-hourglass-split me-1"></i>Pending Approvals ({{ pending_count or 0 }})
+                </a>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-modern">
+                    <i class="bi bi-box-arrow-right me-1"></i>Logout
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 🔥 SMART CONTENT -->
+        {% if users %}
+        <!-- USERS TABLE -->
+        <div class="admin-card p-4">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>MDA</th>
+                            <th>Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users.items %}
+                        <tr>
+                            <td><strong>#{{ user.id }}</strong></td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.mda_name }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if user.role == 'superadmin' %}bg-warning text-dark
+                                    {% elif user.role == 'admin' %}bg-primary
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ user.role|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('superadmin_edit_user', id=user.id) }}" 
+                                       class="btn btn-outline-primary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{{ url_for('superadmin_delete_user', id=user.id) }}" 
+                                       class="btn btn-outline-danger" 
+                                       onclick="return confirm('Delete {{ user.username }}?')"
+                                       title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="bi bi-people fs-1 d-block mb-3 opacity-50"></i>
+                                No users found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <!-- YOUR ORIGINAL DASHBOARD CONTENT (KEEP ALL) -->
+        <!-- Stats Cards -->
+        <div class="row mb-5 g-3">
+            <!-- YOUR 3 ORIGINAL STATS CARDS - KEEP EXACTLY AS IS -->
+            <div class="col-md-4">
+                <div class="card text-center workplan-card h-100 border-warning shadow">
+                    <div class="card-body">
+                        <i class="bi bi-hourglass-split text-warning fs-1 mb-2"></i>
+                        <h3 class="fw-bold text-warning">{{ pending_count or 0 }}</h3>
+                        <p class="mb-0 text-muted">Pending Approvals</p>
+                        {% if pending_count %}
+                        <a href="{{ url_for('view_workplan', id=pending_workplans[0].id) }}" class="btn btn-warning btn-sm mt-2">
+                            <i class="bi bi-eye me-1"></i>Review First
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <!-- Approved + Rejected cards - KEEP YOUR ORIGINAL -->
+            <div class="col-md-4">
+                <div class="card text-center workplan-card h-100 border-success shadow">
+                    <div class="card-body">
+                        <i class="bi bi-check-circle-fill text-success fs-1 mb-2"></i>
+                        <h3 class="fw-bold text-success">{{ approved_count or 0 }}</h3>
+                        <p class="mb-0 text-muted">Approved</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center workplan-card h-100 border-danger shadow">
+                    <div class="card-body">
+                        <i class="bi bi-x-circle-fill text-danger fs-1 mb-2"></i>
+                        <h3 class="fw-bold text-danger">{{ rejected_count or 0 }}</h3>
+                        <p class="mb-0 text-muted">Rejected</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- YOUR ORIGINAL Pending Workplans + Quick Actions - KEEP EXACTLY AS IS -->
+        <!-- ... rest of your original content ... -->
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

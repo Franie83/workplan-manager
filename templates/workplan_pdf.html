@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ workplan.project_title }} - Approved Workplan</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        .header { text-align: center; border-bottom: 3px solid #0d6efd; padding-bottom: 20px; margin-bottom: 30px; }
+        .title { font-size: 28px; font-weight: bold; color: #0d6efd; margin: 0; }
+        .subtitle { color: #666; font-size: 16px; margin: 5px 0; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+        .info-item { background: #f8f9fa; padding: 15px; border-radius: 8px; }
+        .label { font-weight: bold; color: #0d6efd; display: block; margin-bottom: 5px; }
+        .value { font-size: 16px; color: #333; }
+        .status-approved { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; text-align: center; font-weight: bold; }
+        .section { margin: 30px 0; page-break-inside: avoid; }
+        .section-title { background: #0d6efd; color: white; padding: 12px; border-radius: 5px 5px 0 0; font-size: 18px; margin: 0; }
+        .list-item { background: #f8f9fa; margin: 8px 0; padding: 12px; border-left: 4px solid #0d6efd; border-radius: 0 5px 5px 0; }
+        .footer { margin-top: 50px; border-top: 2px solid #dee2e6; padding-top: 20px; font-size: 12px; color: #666; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="title">{{ workplan.project_title }}</h1>
+        <p class="subtitle">{{ workplan.mda }}</p>
+        <div class="status-approved">✅ APPROVED ON {{ workplan.approved_at.strftime('%B %d, %Y') }}</div>
+    </div>
+
+    <div class="info-grid">
+        <div class="info-item">
+            <span class="label">Status</span>
+            <span class="value">APPROVED</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Completion</span>
+            <span class="value">{{ workplan.completion_percentage }}%</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Start Date</span>
+            <span class="value">{{ workplan.start_date.strftime('%B %d, %Y') }}</span>
+        </div>
+        <div class="info-item">
+            <span class="label">End Date</span>
+            <span class="value">{{ workplan.end_date.strftime('%B %d, %Y') }}</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Duration</span>
+            <span class="value">{{ workplan.duration }} days</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Assigned Dept</span>
+            <span class="value">{{ workplan.assigned_dept }}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">📋 Objective</h2>
+        <p style="font-size: 16px; line-height: 1.6; padding: 20px; background: #f8f9fa; border-radius: 0 0 8px 8px;">
+            {{ workplan.objective }}
+        </p>
+    </div>
+
+    {% if workplan.deliverables %}
+    <div class="section">
+        <h2 class="section-title">✅ Deliverables ({{ workplan.deliverables|length }})</h2>
+        {% for deliverable in workplan.deliverables %}
+        <div class="list-item">
+            • {{ deliverable.description }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if workplan.kpis %}
+    <div class="section">
+        <h2 class="section-title">📊 KPIs ({{ workplan.kpis|length }})</h2>
+        {% for kpi in workplan.kpis %}
+        <div class="list-item">
+            • {{ kpi.description }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if workplan.admin_comment %}
+    <div class="section">
+        <h2 class="section-title">💬 Approval Note</h2>
+        <div class="list-item">
+            {{ workplan.admin_comment }}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p>Generated on {{ 'February 05, 2026' }} | Approved by {{ workplan.approver.username if workplan.approver else 'Admin' }}</p>
+
+    </div>
+</body>
+</html>
