@@ -1,0 +1,402 @@
+{% extends 'base.html' %}
+{% block title %}User Management - Workplan Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-12">
+        <!-- Header with Actions -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+            <h2 class="fw-bold text-white mb-0">
+                <i class="bi bi-people-fill me-2"></i>MDAs Management
+                <span class="badge bg-light text-dark ms-2">{{ users.total }} Total</span>
+            </h2>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('mda_performance') }}" class="btn btn-info btn-modern btn-sm">
+                    <i class="bi bi-bar-chart-fill me-1"></i>MDA Performance
+                </a>
+                
+                <!-- 🔥 Admin Tools Dropdown for Superadmin -->
+                {% if current_user.is_superadmin() %}
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-warning btn-modern btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-tools me-1"></i>Admin Tools
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('add_user') }}">
+                                <i class="bi bi-plus-circle me-2"></i>Add User
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('reset_all_user_edits') }}" 
+                               onclick="return confirm('Reset edit attempts for ALL workplans? This will reset edit counts for every project.')">
+                                <i class="bi bi-arrow-counterclockwise me-2"></i>Reset All Project Edits
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Summary Stats Cards -->
+        <div class="row mb-4 g-3">
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-primary shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-people fs-1 text-primary mb-2"></i>
+                        <h3 class="fw-bold text-primary">{{ users.total }}</h3>
+                        <p class="mb-0 text-muted">Total Users</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-success shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-check-circle-fill fs-1 text-success mb-2"></i>
+                        <h3 class="fw-bold text-success">{{ status_counts.approved or 0 }}</h3>
+                        <p class="mb-0 text-muted">Approved Projects</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-warning shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-hourglass-split fs-1 text-warning mb-2"></i>
+                        <h3 class="fw-bold text-warning">{{ status_counts.pending or 0 }}</h3>
+                        <p class="mb-0 text-muted">Pending Projects</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-info shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-graph-up fs-1 text-info mb-2"></i>
+                        <h3 class="fw-bold text-info">{{ status_counts.ongoing or 0 }}</h3>
+                        <p class="mb-0 text-muted">Active Projects</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="admin-card p-4">
+            <!-- Search Bar -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <form method="GET" action="{{ url_for('users_list') }}" class="d-flex" id="searchForm">
+                        <input type="text" 
+                               name="search" 
+                               class="form-control rounded-pill me-2" 
+                               placeholder="🔍 Search users by name, email, or MDA..." 
+                               value="{{ request.args.get('search', '') }}"
+                               id="searchInput">
+                        <button type="submit" class="btn btn-primary rounded-pill px-4">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        {% if request.args.get('search') %}
+                        <a href="{{ url_for('users_list') }}" class="btn btn-outline-secondary rounded-pill ms-2 px-4">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </a>
+                        {% endif %}
+                    </form>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Click on any username to view their projects
+                    </span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>MDA</th>
+                            <th>Role</th>
+                            <th>Projects</th>
+                            <th>Completed</th>
+                            <!-- REMOVED: Edits column - now shown per project -->
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        {% for user in users.items %}
+                        <tr class="user-row">
+                            <td>
+                                <a href="{{ url_for('user_projects', user_id=user.id) }}" 
+                                   class="text-decoration-none fw-bold text-primary">
+                                    <i class="bi bi-person-circle me-1"></i>
+                                    {{ user.username }}
+                                </a>
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi bi-building me-1"></i>{{ user.mda_name|truncate(15) }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if user.role == 'Superadmin' %}bg-warning text-dark
+                                    {% elif user.role == 'Admin' %}bg-primary
+                                    {% else %}bg-secondary{% endif %}">
+                                    <i class="bi 
+                                        {% if user.role == 'Superadmin' %}bi-star-fill
+                                        {% elif user.role == 'Admin' %}bi-shield-fill
+                                        {% else %}bi-person-fill{% endif %} me-1">
+                                    </i>
+                                    {{ user.role }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info rounded-pill">{{ user.project_count or 0 }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-success rounded-pill">{{ user.completed_count or 0 }}</span>
+                            </td>
+                            <!-- REMOVED: Edit attempts column -->
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {% if current_user.is_superadmin() or (current_user.is_admin() and user.role != 'Superadmin') %}
+                                    <a href="{{ url_for('edit_user', id=user.id) }}" 
+                                       class="btn btn-outline-primary" 
+                                       title="Edit User">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    <!-- 🔥 Reset Edit Attempts Button for all user's projects (Superadmin only) -->
+                                    {% if current_user.is_superadmin() and user.role == 'User' %}
+                                    <a href="{{ url_for('reset_user_edits', id=user.id) }}" 
+                                       class="btn btn-outline-warning" 
+                                       title="Reset Edit Attempts for all projects"
+                                       onclick="return confirm('Reset edit attempts for ALL projects belonging to {{ user.username }}? This will set their edit count back to 0 for each project.')">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    {% if current_user.is_superadmin() and user.id != current_user.id %}
+                                    <a href="{{ url_for('delete_user', id=user.id) }}" 
+                                       class="btn btn-outline-danger" 
+                                       onclick="return confirm('Delete user {{ user.username }}? This will also delete all their projects and evidence.')"
+                                       title="Delete User">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    <a href="{{ url_for('user_projects', user_id=user.id) }}" 
+                                       class="btn btn-outline-info" 
+                                       title="View Projects">
+                                        <i class="bi bi-folder"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">  <!-- Changed colspan from 9 to 8 -->
+                                <i class="bi bi-people fs-1 d-block mb-3 text-muted"></i>
+                                <h5 class="text-muted">No users found</h5>
+                                {% if current_user.is_superadmin() %}
+                                <a href="{{ url_for('add_user') }}" class="btn btn-primary mt-3">
+                                    <i class="bi bi-plus-circle me-2"></i>Add Your First User
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Live Search Results Counter -->
+            <div class="row mt-2 mb-3">
+                <div class="col-12">
+                    <div id="searchResults" class="text-muted small"></div>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            {% if users.pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if users.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('users_list', page=users.prev_num, search=request.args.get('search', '')) }}">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in users.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == users.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('users_list', page=page_num, search=request.args.get('search', '')) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if users.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('users_list', page=users.next_num, search=request.args.get('search', '')) }}">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+
+        <!-- Quick Stats Row -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="admin-card p-3">
+                    <h5 class="mb-3"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Role Distribution</h5>
+                    {% set superadmin_count = users.items|selectattr('role', 'equalto', 'Superadmin')|list|length %}
+                    {% set admin_count = users.items|selectattr('role', 'equalto', 'Admin')|list|length %}
+                    {% set user_count = users.items|selectattr('role', 'equalto', 'User')|list|length %}
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="p-2 rounded bg-warning bg-opacity-10">
+                                <span class="badge bg-warning text-dark mb-2">Superadmin</span>
+                                <h4 class="fw-bold">{{ superadmin_count }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded bg-primary bg-opacity-10">
+                                <span class="badge bg-primary mb-2">Admin</span>
+                                <h4 class="fw-bold">{{ admin_count }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded bg-secondary bg-opacity-10">
+                                <span class="badge bg-secondary mb-2">User</span>
+                                <h4 class="fw-bold">{{ user_count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="admin-card p-3">
+                    <h5 class="mb-3"><i class="bi bi-calendar-check me-2 text-success"></i>Recent Activity</h5>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        {{ status_counts.pending or 0 }} pending, 
+                        {{ status_counts.ongoing or 0 }} ongoing,
+                        {{ status_counts.completed or 0 }} completed
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Search JavaScript Enhancement -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const tableRows = document.querySelectorAll('.user-row');
+    const searchResults = document.getElementById('searchResults');
+    
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+            
+            tableRows.forEach(row => {
+                const username = row.querySelector('td:first-child a').textContent.toLowerCase();
+                const email = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                const mda = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+                const role = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+                
+                if (username.includes(searchTerm) || 
+                    email.includes(searchTerm) || 
+                    mda.includes(searchTerm) || 
+                    role.includes(searchTerm)) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            if (searchResults) {
+                if (searchTerm) {
+                    searchResults.innerHTML = `Found ${visibleCount} matching users`;
+                } else {
+                    searchResults.innerHTML = '';
+                }
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.admin-card { 
+    background: white; 
+    border-radius: 20px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+}
+.table th { 
+    background: #1e3a8a; 
+    color: white; 
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+.table td { 
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+.page-link { 
+    border-radius: 8px; 
+    margin: 0 3px;
+    color: #1e3a8a;
+}
+.page-item.active .page-link {
+    background-color: #1e3a8a;
+    border-color: #1e3a8a;
+}
+.workplan-card {
+    transition: all 0.3s ease;
+}
+.workplan-card:hover {
+    transform: translateY(-5px);
+}
+.badge {
+    font-weight: 500;
+}
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+}
+.btn-sm.btn-modern {
+    padding: 0.3rem 0.8rem !important;
+    font-size: 0.8rem !important;
+    border-radius: 8px;
+}
+@media (max-width: 768px) {
+    .d-flex.flex-wrap {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    .d-flex.gap-2 {
+        margin-top: 0.5rem;
+    }
+    .table th, .table td {
+        font-size: 0.8rem;
+    }
+}
+</style>
+{% endblock %}

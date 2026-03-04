@@ -1,0 +1,317 @@
+{% extends 'base.html' %}
+{% block title %}{{ user.username }}'s Projects - Workplan Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-12">
+        <!-- Header with User Info -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-white mb-2">
+                    <i class="bi bi-folder me-2"></i>{{ user.username }}'s Projects
+                    <span class="badge bg-light text-dark ms-2">{{ project_count }} Total</span>
+                </h2>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="badge bg-primary">
+                        <i class="bi bi-building me-1"></i>{{ user.mda_name }}
+                    </span>
+                    <span class="badge {% if user.role == 'Superadmin' %}bg-warning text-dark{% elif user.role == 'Admin' %}bg-primary{% else %}bg-secondary{% endif %}">
+                        <i class="bi 
+                            {% if user.role == 'Superadmin' %}bi-star-fill
+                            {% elif user.role == 'Admin' %}bi-shield-fill
+                            {% else %}bi-person-fill{% endif %} me-1">
+                        </i>
+                        {{ user.role }}
+                    </span>
+                    <!-- 🔥 REMOVED: User-level edit attempts - now shown per project -->
+                </div>
+            </div>
+            <div>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('users_list') }}" class="btn btn-outline-light btn-modern me-2">
+                    <i class="bi bi-arrow-left me-1"></i>Back to MDAs
+                </a>
+                {% endif %}
+                <a href="{{ url_for('add_workplan') }}" class="btn btn-success btn-modern">
+                    <i class="bi bi-plus-lg me-1"></i>New Project
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4 g-3">
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-primary shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-folder fs-1 text-primary mb-2"></i>
+                        <h3 class="fw-bold text-primary">{{ project_count }}</h3>
+                        <p class="mb-0 text-muted">Total Projects</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-success shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-check-circle-fill fs-1 text-success mb-2"></i>
+                        <h3 class="fw-bold text-success">{{ workplans|selectattr('status', 'equalto', 'Approved')|list|length }}</h3>
+                        <p class="mb-0 text-muted">Approved</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-warning shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-hourglass-split fs-1 text-warning mb-2"></i>
+                        <h3 class="fw-bold text-warning">{{ workplans|selectattr('status', 'equalto', 'Pending')|list|length }}</h3>
+                        <p class="mb-0 text-muted">Pending</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-info shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-graph-up fs-1 text-info mb-2"></i>
+                        <h3 class="fw-bold text-info">{{ avg_completion }}%</h3>
+                        <p class="mb-0 text-muted">Avg. Completion</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter Bar -->
+        <div class="admin-card p-3 mb-4">
+            <form method="GET" class="row g-3 align-items-center">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" 
+                               name="search" 
+                               class="form-control border-start-0 ps-0" 
+                               placeholder="Search projects by title or MDA..." 
+                               value="{{ search_term }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="Pending" {% if current_filter == 'Pending' %}selected{% endif %}>Pending</option>
+                        <option value="Approved" {% if current_filter == 'Approved' %}selected{% endif %}>Approved</option>
+                        <option value="Rejected" {% if current_filter == 'Rejected' %}selected{% endif %}>Rejected</option>
+                        <option value="Ongoing" {% if current_filter == 'Ongoing' %}selected{% endif %}>Ongoing</option>
+                        <option value="Started" {% if current_filter == 'Started' %}selected{% endif %}>Started</option>
+                        <option value="Pause" {% if current_filter == 'Pause' %}selected{% endif %}>Pause</option>
+                        <option value="Completed" {% if current_filter == 'Completed' %}selected{% endif %}>Completed</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>Apply Filters
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a href="{{ url_for('user_projects', user_id=user.id) }}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-repeat me-1"></i>Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Projects Grid -->
+        {% if workplans %}
+        <div class="row g-4">
+            {% for workplan in workplans %}
+            <div class="col-xl-4 col-lg-6">
+                <div class="workplan-card h-100 position-relative">
+                    <!-- Status Badge -->
+                    <div class="position-absolute top-0 end-0 m-3 z-3">
+                        <span class="badge bg-{{ workplan.status_badge_class }} status-badge px-4 py-2 fs-6 fw-bold shadow-sm">
+                            {{ workplan.status }}
+                            {% if workplan.admin_comment %}
+                            <i class="bi bi-chat-square-text ms-1" 
+                               title="Admin: {{ workplan.admin_comment[:50] }}..." 
+                               data-bs-toggle="tooltip"></i>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="p-4 border-bottom">
+                        <h5 class="fw-bold mb-3">{{ workplan.project_title }}</h5>
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-1">
+                                <i class="bi bi-building me-1 text-primary"></i>
+                                {{ workplan.mda }}
+                            </small>
+                            <small class="text-muted d-block mb-1">
+                                <i class="bi bi-calendar-range me-1 text-info"></i>
+                                {{ workplan.start_date.strftime('%d/%m/%Y') }} - {{ workplan.end_date.strftime('%d/%m/%Y') }}
+                            </small>
+                            <small class="text-muted">
+                                <i class="bi bi-clock-history me-1 text-warning"></i>
+                                {{ workplan.duration_days }} days
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4">
+                        <!-- Progress Bar -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="text-muted">Progress</small>
+                                <small class="fw-bold">{{ workplan.completion_from_deliverables }}%</small>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-{% if workplan.completion_from_deliverables >= 90 %}success{% elif workplan.completion_from_deliverables >= 70 %}warning{% else %}primary{% endif %}" 
+                                     style="width: {{ workplan.completion_from_deliverables }}%">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Stats Row -->
+                        <div class="row text-center mb-4">
+                            <div class="col-4">
+                                <div class="fw-bold text-success fs-5">{{ workplan.deliverables|length }}</div>
+                                <small class="text-muted">Deliverables</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold text-primary fs-5">{{ workplan.kpis|length }}</div>
+                                <small class="text-muted">KPIs</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold text-info fs-5">{{ workplan.evidence_count }}</div>
+                                <small class="text-muted">Evidence</small>
+                            </div>
+                        </div>
+
+                        <!-- 🔥 NEW: Show edit attempts per project -->
+                        {% if not current_user.is_admin() and workplan.created_by == current_user.id %}
+                        <div class="mb-2 text-center">
+                            <small class="text-muted">
+                                <i class="bi bi-pencil-square me-1"></i>
+                                Edits for this project: {{ workplan.edit_attempts }}/5
+                            </small>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Action Buttons -->
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('view_workplan', id=workplan.id) }}" class="btn btn-outline-primary btn-modern">
+                                <i class="bi bi-eye me-1"></i> View Details
+                            </a>
+                            
+                            <!-- Edit button - Shows for admins AND project owners -->
+                            {% if current_user.is_admin() or current_user.is_superadmin() or workplan.created_by == current_user.id %}
+                            <a href="{{ url_for('edit_workplan', id=workplan.id) }}" class="btn btn-primary btn-modern">
+                                <i class="bi bi-pencil me-1"></i> Edit
+                            </a>
+                            {% endif %}
+                            
+                            <!-- Delete button - Shows for admins AND project owners -->
+                            {% if current_user.is_admin() or current_user.is_superadmin() or current_user.id == workplan.created_by %}
+                            <button type="button" 
+                                    class="btn btn-outline-danger btn-modern"
+                                    onclick="confirmDelete({{ workplan.id }}, '{{ workplan.project_title }}')">
+                                <i class="bi bi-trash me-1"></i> Delete
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5 my-5">
+            <i class="bi bi-folder-x display-1 text-white-50 mb-4"></i>
+            <h3 class="text-white mb-3">No Projects Found</h3>
+            <p class="text-white-50 mb-4">
+                {% if search_term or current_filter %}
+                    No projects match your search criteria.
+                    <a href="{{ url_for('user_projects', user_id=user.id) }}" class="text-white fw-bold">Clear filters</a>
+                {% else %}
+                    {{ user.username }} hasn't created any projects yet.
+                {% endif %}
+            </p>
+            {% if current_user.is_admin() or current_user.id == user.id %}
+            <a href="{{ url_for('add_workplan') }}" class="btn btn-light btn-lg px-5">
+                <i class="bi bi-plus-lg me-2"></i>Create First Project
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Confirm Delete
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="deleteProjectTitle"></strong>?</p>
+                <p class="text-danger mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    This will permanently delete the project, all its deliverables, KPIs, and evidence files.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="#" id="confirmDeleteBtn" class="btn btn-danger">
+                    <i class="bi bi-trash me-1"></i>Delete Project
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(projectId, projectTitle) {
+    document.getElementById('deleteProjectTitle').textContent = projectTitle;
+    document.getElementById('confirmDeleteBtn').href = "{{ url_for('delete_workplan', id=0) }}".replace('0', projectId);
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+
+<style>
+.workplan-card {
+    transition: all 0.3s ease;
+    background: white;
+}
+.workplan-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2) !important;
+}
+.admin-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.progress {
+    background-color: #e9ecef;
+    border-radius: 10px;
+}
+.btn-modern {
+    border-radius: 10px;
+    font-weight: 500;
+}
+.text-white-50 {
+    color: rgba(255,255,255,0.7) !important;
+}
+</style>
+{% endblock %}

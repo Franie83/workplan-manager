@@ -1,33 +1,170 @@
 {% extends 'base.html' %}
 {% block title %}Login - Workplan Manager{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-        <div class="card shadow-lg border-0 rounded-4">
-            <div class="card-body p-5">
-                <div class="text-center mb-4">
-                    <h2 class="fw-bold text-primary">Welcome Back</h2>
-                    <p class="text-muted">Sign in to your account</p>
+    <div class="col-md-6 col-lg-5">
+        <div class="workplan-card p-5" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+            <!-- Logo/Icon -->
+            <div class="text-center mb-4">
+                <div class="display-1 text-white mb-3">
+                    <i class="bi bi-calendar3-week"></i>
                 </div>
-                <form method="POST">
-                    {{ form.hidden_tag() }}
-                    <div class="mb-4">
-                        {{ form.email.label(class="form-label") }}
-                        {{ form.email(class="form-control form-control-lg rounded-pill") }}
-                    </div>
-                    <div class="mb-4">
-                        {{ form.password.label(class="form-label") }}
-                        {{ form.password(class="form-control form-control-lg rounded-pill") }}
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill mb-3">
-                        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
-                    </button>
-                </form>
-                <div class="text-center">
-                    <p>Don't have an account? <a href="{{ url_for('register') }}" class="text-primary fw-bold">Sign up</a></p>
-                </div>
+                <h2 class="fw-bold text-white">Welcome Back</h2>
+                <p class="text-white-50">Sign in to continue to Workplan Manager</p>
+            </div>
+
+            <!-- Login Form - FIXED with proper CSRF -->
+            <form method="POST" action="{{ url_for('login') }}">
+    <!-- No CSRF token needed now -->
+    
+    <div class="mb-4">
+        <label class="form-label text-white fw-bold">
+            <i class="bi bi-envelope me-2"></i>Email Address
+        </label>
+        <input type="email" class="form-control form-control-lg rounded-3 bg-white bg-opacity-90 border-0" 
+               id="email" name="email" placeholder="Enter your email" required>
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label text-white fw-bold">
+            <i class="bi bi-lock me-2"></i>Password
+        </label>
+        <input type="password" class="form-control form-control-lg rounded-3 bg-white bg-opacity-90 border-0" 
+               id="password" name="password" placeholder="Enter your password" required>
+    </div>
+
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <input type="checkbox" class="form-check-input" id="remember" name="remember">
+            <label class="form-check-label text-white" for="remember">Remember me</label>
+        </div>
+        <a href="#" class="text-white-50 text-decoration-none small">Forgot Password?</a>
+    </div>
+
+    <button type="submit" class="btn btn-light btn-modern w-100 py-3 mb-3 text-success fw-bold">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+    </button>
+</form>
+
+            <!-- Register Link -->
+            <div class="text-center mt-4 p-3 rounded-3" style="background: rgba(255,255,255,0.1);">
+                <p class="text-white mb-0">
+                    New to Workplan Manager? 
+                    <a href="{{ url_for('register') }}" class="text-white fw-bold text-decoration-none" style="text-decoration: underline !important;">
+                        Create an account <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </p>
+            </div>
+
+            <!-- Demo Credentials -->
+            <div class="alert mt-4 mb-0" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white;">
+                <small>
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong class="text-white">Demo Credentials:</strong><br>
+                    <span class="text-white-50">Admin: admin@example.com / admin123</span><br>
+                    <span class="text-white-50">User: test@example.com / test123</span>
+                </small>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.workplan-card {
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    border: none;
+}
+
+.form-label {
+    color: white !important;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+.form-control {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: rgba(255,255,255,0.9);
+    border: none;
+}
+
+.form-control:focus {
+    background: white;
+    box-shadow: 0 0 0 0.25rem rgba(255,255,255,0.25);
+    border: none;
+}
+
+.btn-modern {
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+}
+
+.btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Checkbox Styles */
+.form-check-input {
+    cursor: pointer;
+    width: 1.2em;
+    height: 1.2em;
+    margin-top: 0;
+    border: 2px solid #0d6efd;
+    border-radius: 4px;
+    outline: none;
+    transition: all 0.2s ease;
+    background-color: white;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    border-color: #0d6efd;
+}
+
+.form-check-label {
+    cursor: pointer;
+    color: white !important;
+    user-select: none;
+    font-size: 0.95rem;
+}
+
+.text-white-50 {
+    color: rgba(255,255,255,0.7) !important;
+}
+
+.alert {
+    border-radius: 12px;
+    backdrop-filter: blur(5px);
+}
+
+.btn-light {
+    background: white;
+    border: none;
+}
+
+.btn-light:hover {
+    background: #f8f9fa;
+}
+
+a.text-white {
+    transition: all 0.2s ease;
+}
+
+a.text-white:hover {
+    opacity: 0.9;
+    text-decoration: underline !important;
+}
+</style>
 {% endblock %}

@@ -7,145 +7,141 @@
         <div class="col-lg-10">
             <!-- HEADER -->
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="fw-bold text-dark bg-white px-3 py-2 rounded shadow-sm">
+                <h2 class="fw-bold text-white">
                     <i class="bi bi-pencil me-2"></i>Edit {{ workplan.project_title }}
                 </h2>
                 <div>
                     <a href="{{ url_for('view_workplan', id=workplan.id) }}" 
-                       class="btn btn-outline-primary me-2">
+                       class="btn btn-outline-light btn-modern me-2">
                         <i class="bi bi-eye"></i> View
                     </a>
-                    <a href="{{ url_for('index') }}" 
-                       class="btn btn-outline-secondary me-2">
+                    <a href="
+                        {% if current_user.is_admin() %}
+                            {{ url_for('users_list') }}
+                        {% else %}
+                            {{ url_for('user_projects', user_id=current_user.id) }}
+                        {% endif %}
+                    " class="btn btn-outline-light btn-modern">
                         <i class="bi bi-arrow-left"></i> Dashboard
                     </a>
                 </div>
             </div>
 
-            <!-- 🔥 STATUS WARNING -->
-            {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
-            <div class="alert alert-success mb-4">
-                <i class="bi bi-check-circle-fill me-2"></i>
-                <strong>✅ This workplan is APPROVED</strong><br>
-                <small class="text-muted">Approved workplans are read-only for regular users. Contact admin for changes.</small>
-            </div>
-            {% endif %}
-
-            <!-- 🔥 MAIN WORKPLAN FORM -->
+            <!-- 🔥 EDIT ATTEMPTS WARNING FOR USERS -->
+            <!-- 🔥 EDIT ATTEMPTS WARNING FOR USERS - UPDATED TO 5 -->
+<!-- 🔥 EDIT ATTEMPTS WARNING FOR USERS - UPDATED TO 5 -->
+<!-- 🔥 EDIT ATTEMPTS WARNING FOR USERS -->
+{% if not current_user.is_admin() and workplan.created_by == current_user.id %}
+<div class="alert alert-warning mb-4">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <strong>Edit Attempts for this Project: {{ workplan.edit_attempts }}/5 used</strong>
+    <br>
+    <small>You have {{ 5 - workplan.edit_attempts }} edit{% if 5 - workplan.edit_attempts != 1 %}s{% endif %} remaining for this project.</small>
+</div>
+{% endif %}
+            <!-- 🔥 MAIN WORKPLAN FORM - GREEN BACKGROUND -->
             <form method="POST" action="{{ url_for('edit_workplan', id=workplan.id) }}">
                 {{ form.hidden_tag() }}
                 
-                <!-- Workplan Details -->
-                <div class="card shadow workplan-card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Workplan Details</h5>
+                <!-- Workplan Details with Green Background -->
+                <div class="card shadow workplan-card" style="background: linear-gradient(135deg, #2ecc71, #27ae60); border: none;">
+                    <div class="card-header" style="background: rgba(255,255,255,0.1); color: white; border-bottom: 1px solid rgba(255,255,255,0.2);">
+                        <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Workplan Details</h5>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
                             <!-- MDA -->
                             <div class="col-md-6">
-                                {{ form.mda.label(class="form-label fw-bold") }}
-                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
-                                    {{ form.mda(class="form-control", disabled=True) }}
-                                {% else %}
-                                    {{ form.mda(class="form-control") }}
-                                {% endif %}
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-building me-2"></i>{{ form.mda.label.text }}
+                                </label>
+                                {{ form.mda(class="form-control bg-white bg-opacity-90 border-0", style="color: #212529;") }}
                             </div>
 
                             <!-- Project Title -->
                             <div class="col-md-6">
-                                {{ form.project_title.label(class="form-label fw-bold") }}
-                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
-                                    {{ form.project_title(class="form-control", disabled=True) }}
-                                {% else %}
-                                    {{ form.project_title(class="form-control") }}
-                                {% endif %}
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-tag me-2"></i>{{ form.project_title.label.text }}
+                                </label>
+                                {{ form.project_title(class="form-control bg-white bg-opacity-90 border-0", style="color: #212529;") }}
                             </div>
 
                             <!-- Objective -->
                             <div class="col-12">
-                                {{ form.objective.label(class="form-label fw-bold") }}
-                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
-                                    {{ form.objective(class="form-control", rows=3, disabled=True) }}
-                                {% else %}
-                                    {{ form.objective(class="form-control", rows=3) }}
-                                {% endif %}
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-lightbulb me-2"></i>{{ form.objective.label.text }}
+                                </label>
+                                {{ form.objective(class="form-control bg-white bg-opacity-90 border-0", rows=3, style="color: #212529;") }}
                             </div>
 
                             <!-- Assigned Dept -->
                             <div class="col-md-6">
-                                {{ form.assigned_dept.label(class="form-label fw-bold") }}
-                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
-                                    {{ form.assigned_dept(class="form-control", disabled=True) }}
-                                {% else %}
-                                    {{ form.assigned_dept(class="form-control") }}
-                                {% endif %}
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-people me-2"></i>{{ form.assigned_dept.label.text }}
+                                </label>
+                                {{ form.assigned_dept(class="form-control bg-white bg-opacity-90 border-0", style="color: #212529;") }}
                             </div>
 
                             <!-- Collaborating Dept -->
                             <div class="col-md-6">
-                                {{ form.collaborating_dept.label(class="form-label fw-bold") }}
-                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
-                                    {{ form.collaborating_dept(class="form-control", disabled=True) }}
-                                {% else %}
-                                    {{ form.collaborating_dept(class="form-control") }}
-                                {% endif %}
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-people-fill me-2"></i>{{ form.collaborating_dept.label.text }}
+                                </label>
+                                {{ form.collaborating_dept(class="form-control bg-white bg-opacity-90 border-0", style="color: #212529;") }}
                             </div>
 
                             <!-- Start Date -->
                             <div class="col-md-4">
-                                {{ form.start_date.label(class="form-label fw-bold") }}
-                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
-                                    {{ form.start_date(class="form-control", disabled=True) }}
-                                {% else %}
-                                    {{ form.start_date(class="form-control") }}
-                                {% endif %}
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-calendar-start me-2"></i>{{ form.start_date.label.text }}
+                                </label>
+                                {{ form.start_date(class="form-control bg-white bg-opacity-90 border-0", type="date", style="color: #212529;") }}
                             </div>
 
                             <!-- End Date -->
                             <div class="col-md-4">
-                                {{ form.end_date.label(class="form-label fw-bold") }}
-                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
-                                    {{ form.end_date(class="form-control", disabled=True) }}
-                                {% else %}
-                                    {{ form.end_date(class="form-control") }}
-                                {% endif %}
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-calendar-end me-2"></i>{{ form.end_date.label.text }}
+                                </label>
+                                {{ form.end_date(class="form-control bg-white bg-opacity-90 border-0", type="date", style="color: #212529;") }}
                             </div>
 
                             <!-- Duration -->
                             <div class="col-md-4">
-                                {{ form.duration.label(class="form-label fw-bold") }}
-                                {{ form.duration(class="form-control bg-light", readonly=True) }}
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-clock-history me-2"></i>{{ form.duration.label.text }}
+                                </label>
+                                {{ form.duration(class="form-control bg-light", readonly=True, style="color: #212529;") }}
                             </div>
 
                             <!-- 🔥 COMPLETION PERCENTAGE - AUTO FROM DELIVERABLES -->
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">Completion %</label>
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-percent me-2"></i>Completion %
+                                </label>
                                 <div class="input-group">
                                     <input type="number" 
                                            class="form-control bg-light" 
                                            id="completion_display"
                                            value="{{ workplan.completion_from_deliverables }}" 
-                                           readonly>
+                                           readonly
+                                           style="color: #212529;">
                                     <span class="input-group-text bg-light">%</span>
                                 </div>
-                                <small class="form-text text-muted">
+                                <small class="text-white-50">
                                     <i class="bi bi-info-circle"></i> 
                                     Auto-calculated from completed deliverables
                                 </small>
-                                <!-- Hidden field to store the value for form submission -->
                                 <input type="hidden" name="completion_percentage" id="completion_percentage" 
                                        value="{{ workplan.completion_from_deliverables }}">
                             </div>
 
                             <!-- Status -->
                             <div class="col-md-6">
-                                {{ form.status.label(class="form-label fw-bold") }}
-                                {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}
-                                    {{ form.status(class="form-select", disabled=True) }}
-                                {% else %}
-                                    {{ form.status(class="form-select") }}
-                                {% endif %}
+                                <label class="form-label text-white fw-bold">
+                                    <i class="bi bi-flag me-2"></i>{{ form.status.label.text }}
+                                </label>
+                                {{ form.status(class="form-select bg-white bg-opacity-90 border-0", id="statusSelect", style="color: #212529;") }}
                             </div>
                         </div>
                     </div>
@@ -154,24 +150,18 @@
                 <!-- 🔥 SAVE BUTTONS -->
                 <div class="mt-4">
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="submit" class="btn btn-success btn-modern btn-lg px-5">
                             <i class="bi bi-check-lg me-2"></i>Save Workplan
                         </button>
-                        {% else %}
-                        <button type="button" class="btn btn-primary btn-lg" disabled>
-                            <i class="bi bi-lock-fill me-2"></i>Read Only - Approved
-                        </button>
-                        {% endif %}
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                        <a href="{{ url_for('view_workplan', id=workplan.id) }}" class="btn btn-outline-light btn-modern btn-lg px-4">
                             Cancel
                         </a>
                     </div>
                 </div>
             </form>
 
-            <!-- 🔥 DELIVERABLES SECTION WITH CHECKBOXES AND EVIDENCE UPLOAD -->
-            <div class="card shadow workplan-card mt-4">
+            <!-- 🔥 DELIVERABLES SECTION WITH EVIDENCE REQUIREMENT ENFORCEMENT -->
+            <div class="card shadow workplan-card mt-4" style="background: white;">
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="bi bi-check2-square me-2"></i>
@@ -186,21 +176,29 @@
                         {% if workplan.deliverables %}
                             {% for deliverable in workplan.deliverables %}
                             <div class="border p-3 mb-3 bg-light rounded deliverable-item" 
-                                 data-id="{{ deliverable.id }}" id="deliverable-{{ deliverable.id }}">
+                                 data-id="{{ deliverable.id }}" 
+                                 id="deliverable-{{ deliverable.id }}"
+                                 data-requires-evidence="{{ 'true' if deliverable.requires_evidence else 'false' }}">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div class="d-flex align-items-center flex-grow-1">
-                                        <!-- CHECKBOX -->
+                                        <!-- CHECKBOX - Will be disabled if evidence required and missing -->
                                         <div class="form-check me-3">
                                             <input type="checkbox" 
                                                    class="form-check-input deliverable-checkbox" 
                                                    data-id="{{ deliverable.id }}"
                                                    {% if deliverable.completed %}checked{% endif %}
-                                                   {% if workplan.status == 'Approved' and not current_user.is_admin() and not current_user.is_superadmin() %}disabled{% endif %}>
+                                                   {% if workplan.created_by != current_user.id and not current_user.is_admin() %}disabled{% endif %}
+                                                   {% if deliverable.requires_evidence and deliverable.evidence_files|length == 0 and not deliverable.completed %}disabled{% endif %}>
                                         </div>
                                         <div class="flex-grow-1">
                                             <span class="{% if deliverable.completed %}text-success fw-bold{% endif %} deliverable-text">
                                                 {{ deliverable.description }}
                                             </span>
+                                            {% if deliverable.requires_evidence %}
+                                            <span class="badge bg-warning text-dark ms-2" title="Evidence required">
+                                                <i class="bi bi-paperclip me-1"></i>Evidence Required
+                                            </span>
+                                            {% endif %}
                                             {% if deliverable.completed %}
                                             <span class="badge bg-success ms-2 status-badge">✓ Completed</span>
                                             {% if deliverable.completed_at %}
@@ -212,7 +210,7 @@
                                         </div>
                                     </div>
                                     <div>
-                                        {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                                        {% if workplan.created_by == current_user.id or current_user.is_admin() %}
                                         <a href="{{ url_for('delete_deliverable', deliverable_id=deliverable.id) }}" 
                                            class="btn btn-sm btn-outline-danger" 
                                            onclick="return confirm('Delete this deliverable?')">
@@ -222,14 +220,17 @@
                                     </div>
                                 </div>
                                 
-                                <!-- 🔥 EVIDENCE SECTION -->
+                                <!-- 🔥 EVIDENCE SECTION - REQUIRED -->
                                 <div class="ms-4 mt-2 p-2 bg-white rounded border" id="evidence-{{ deliverable.id }}">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <h6 class="mb-0 text-primary">
                                             <i class="bi bi-paperclip me-1"></i>Evidence Files
                                             <span class="badge bg-primary ms-2 evidence-count">{{ deliverable.evidence_files|length }}</span>
+                                            {% if deliverable.requires_evidence and deliverable.evidence_files|length == 0 %}
+                                            <span class="badge bg-danger ms-2 pulse-badge">REQUIRED</span>
+                                            {% endif %}
                                         </h6>
-                                        {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                                        {% if workplan.created_by == current_user.id or current_user.is_admin() %}
                                         <button class="btn btn-sm btn-outline-primary upload-evidence-btn" 
                                                 data-deliverable-id="{{ deliverable.id }}">
                                             <i class="bi bi-cloud-upload me-1"></i>Upload
@@ -256,7 +257,7 @@
                                                         {{ evidence.uploaded_at.strftime('%Y-%m-%d') }}
                                                     </small>
                                                 </div>
-                                                {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                                                {% if workplan.created_by == current_user.id or current_user.is_admin() %}
                                                 <button class="btn btn-sm btn-outline-danger delete-evidence-btn" 
                                                         data-evidence-id="{{ evidence.id }}">
                                                     <i class="bi bi-x"></i>
@@ -265,7 +266,16 @@
                                             </div>
                                             {% endfor %}
                                         {% else %}
-                                            <p class="text-muted small mb-0 text-center py-2">No evidence files uploaded yet.</p>
+                                            <p class="text-muted small mb-0 text-center py-2">
+                                                {% if deliverable.requires_evidence %}
+                                                <span class="text-danger fw-bold">
+                                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                                    ⚠️ Evidence required before marking as complete
+                                                </span>
+                                                {% else %}
+                                                No evidence files uploaded yet.
+                                                {% endif %}
+                                            </p>
                                         {% endif %}
                                     </div>
                                     
@@ -286,22 +296,54 @@
                         {% endif %}
                     </div>
                     
-                    {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                    {% if workplan.created_by == current_user.id or current_user.is_admin() %}
+                    <!-- 🔥 ADD DELIVERABLE FORM WITH EVIDENCE REQUIREMENT CHECKBOX - SUPERADMIN ONLY CAN UNCHECK -->
                     <form method="POST" action="{{ url_for('add_deliverable', workplan_id=workplan.id) }}" class="mt-3">
-                        <div class="input-group">
-                            <input type="text" name="description" class="form-control" 
-                                   placeholder="Enter new deliverable..." required>
-                            <button type="submit" class="btn btn-success">
-                                <i class="bi bi-plus"></i> Add Deliverable
-                            </button>
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <input type="text" name="description" class="form-control" 
+                                           placeholder="Enter new deliverable..." required>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-plus"></i> Add
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check mt-2">
+                                    {% if current_user.is_superadmin() %}
+                                        <!-- Superadmin can toggle the checkbox -->
+                                        <input type="checkbox" class="form-check-input" name="requires_evidence" id="requires_evidence" checked>
+                                    {% else %}
+                                        <!-- Regular users see it checked and disabled -->
+                                        <input type="checkbox" class="form-check-input" name="requires_evidence" id="requires_evidence" checked disabled>
+                                        <input type="hidden" name="requires_evidence" value="on">
+                                    {% endif %}
+                                    <label class="form-check-label" for="requires_evidence" style="color: #212529; {% if not current_user.is_superadmin() %}opacity: 0.8;{% endif %}">
+                                        <i class="bi bi-paperclip me-1"></i>
+                                        Require evidence before completion
+                                        {% if not current_user.is_superadmin() %}
+                                        <small class="text-muted d-block">(Enabled by default - only Superadmin can change)</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </form>
+                    {% endif %}
+                    
+                    <!-- Info alert for non-superadmins -->
+                    {% if not current_user.is_superadmin() and (workplan.created_by == current_user.id or current_user.is_admin()) %}
+                    <div class="alert alert-info mt-3 mb-0 py-2">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>Evidence requirement is enabled by default for all deliverables. Contact Superadmin if you need to disable this requirement.</small>
+                    </div>
                     {% endif %}
                 </div>
             </div>
 
             <!-- 🔥 KPIs SECTION -->
-            <div class="card shadow workplan-card mt-4">
+            <div class="card shadow workplan-card mt-4" style="background: white;">
                 <div class="card-header bg-warning text-dark">
                     <h5 class="mb-0">KPIs ({{ workplan.kpis|length or 0 }})</h5>
                 </div>
@@ -310,7 +352,7 @@
                         {% for kpi in workplan.kpis %}
                         <div class="border p-3 mb-2 bg-light rounded d-flex justify-content-between align-items-center">
                             <span>• {{ kpi.description }}</span>
-                            {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                            {% if workplan.created_by == current_user.id or current_user.is_admin() %}
                             <a href="{{ url_for('delete_kpi', kpi_id=kpi.id) }}" 
                                class="btn btn-sm btn-outline-danger" 
                                onclick="return confirm('Delete this KPI?')">
@@ -323,7 +365,7 @@
                         <p class="text-muted mb-3">No KPIs added yet.</p>
                     {% endif %}
                     
-                    {% if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() %}
+                    {% if workplan.created_by == current_user.id or current_user.is_admin() %}
                     <form method="POST" action="{{ url_for('add_kpi', workplan_id=workplan.id) }}" class="mt-3">
                         <div class="input-group">
                             <input type="text" name="description" class="form-control" 
@@ -340,7 +382,7 @@
     </div>
 </div>
 
-<!-- 🔥 JAVASCRIPT FOR CHECKBOX HANDLING AND EVIDENCE UPLOAD -->
+<!-- 🔥 JAVASCRIPT FOR EVIDENCE REQUIREMENT ENFORCEMENT AND AUTO-STATUS UPDATE -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const checkboxes = document.querySelectorAll('.deliverable-checkbox');
@@ -348,77 +390,124 @@ document.addEventListener('DOMContentLoaded', function() {
     const completionHidden = document.getElementById('completion_percentage');
     const completionBadge = document.getElementById('completion-badge');
     const deliverableCount = document.getElementById('deliverable-count');
+    const statusSelect = document.getElementById('statusSelect');
     
-    // Only enable if workplan is editable
-    const isEditable = {{ 'true' if workplan.status != 'Approved' or current_user.is_admin() or current_user.is_superadmin() else 'false' }};
+    // Only enable if user is owner or admin
+    const isEditable = {{ 'true' if workplan.created_by == current_user.id or current_user.is_admin() else 'false' }};
     
     if (!isEditable) {
-        console.log('Workplan is read-only - checkboxes disabled');
+        console.log('User cannot edit this workplan');
         return;
     }
     
-    // Checkbox change handler
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const deliverableId = this.dataset.id;
-            const isChecked = this.checked;
-            const deliverableItem = this.closest('.deliverable-item');
-            const textSpan = deliverableItem.querySelector('.deliverable-text');
-            const statusBadge = deliverableItem.querySelector('.status-badge');
-            
-            // Optimistic UI update
-            if (isChecked) {
-                textSpan.classList.add('text-success', 'fw-bold');
-                if (!statusBadge) {
-                    const newBadge = document.createElement('span');
-                    newBadge.className = 'badge bg-success ms-2 status-badge';
-                    newBadge.textContent = '✓ Completed';
-                    deliverableItem.querySelector('.flex-grow-1').appendChild(newBadge);
-                }
-            } else {
-                textSpan.classList.remove('text-success', 'fw-bold');
-                if (statusBadge) statusBadge.remove();
+    // Function to check if a deliverable has evidence
+    function hasEvidence(deliverableItem) {
+        return deliverableItem.querySelectorAll('.evidence-item').length > 0;
+    }
+    
+    // Function to check if deliverable requires evidence
+    function requiresEvidence(deliverableItem) {
+        return deliverableItem.dataset.requiresEvidence === 'true';
+    }
+    
+    // Function to update checkbox disabled state based on evidence
+    function updateCheckboxState(deliverableItem) {
+        const checkbox = deliverableItem.querySelector('.deliverable-checkbox');
+        const requiresEv = requiresEvidence(deliverableItem);
+        const hasEv = hasEvidence(deliverableItem);
+        
+        if (requiresEv && !hasEv && !checkbox.checked) {
+            checkbox.disabled = true;
+            checkbox.title = "Evidence required before marking as complete";
+        } else {
+            checkbox.disabled = false;
+            checkbox.title = "";
+        }
+    }
+    
+    // 🔥 NEW FUNCTION: Check completion and update status automatically
+    function checkAndUpdateStatus(completionPercentage) {
+        if (!statusSelect) return;
+        
+        if (completionPercentage >= 100) {
+            // Only update if not already Completed
+            if (statusSelect.value !== 'Completed') {
+                statusSelect.value = 'Completed';
+                // Add visual feedback
+                statusSelect.classList.add('border-success', 'bg-success', 'bg-opacity-10');
+                showNotification('✅ Project completed! Status auto-updated to Completed.', 'success');
             }
-            
-            // Send AJAX request to toggle completion
-            fetch(`/toggle_deliverable/${deliverableId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update completion displays
-                    completionDisplay.value = data.new_completion;
-                    completionHidden.value = data.new_completion;
-                    completionBadge.textContent = data.new_completion + '% Complete';
-                    
-                    // Update counts
-                    const totalCount = document.querySelectorAll('.deliverable-checkbox').length;
-                    deliverableCount.textContent = totalCount;
-                    
-                    showNotification('Progress updated!', 'success');
-                } else {
-                    // Revert checkbox if failed
-                    this.checked = !isChecked;
-                    
-                    // Revert UI
-                    if (this.checked) {
-                        textSpan.classList.add('text-success', 'fw-bold');
-                    } else {
-                        textSpan.classList.remove('text-success', 'fw-bold');
-                        const badge = deliverableItem.querySelector('.status-badge');
-                        if (badge) badge.remove();
-                    }
-                    
-                    showNotification(data.error || 'Error updating progress', 'danger');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                // Revert checkbox
+        }
+        // Don't change status if below 100% - leave as user selected
+    }
+    
+    // Initial update of all checkboxes
+    document.querySelectorAll('.deliverable-item').forEach(item => {
+        updateCheckboxState(item);
+    });
+    
+    // Checkbox change handler with evidence validation
+    checkboxes.forEach(checkbox => {
+        // Remove any existing listeners to avoid duplicates
+        checkbox.removeEventListener('change', handleCheckboxChange);
+        checkbox.addEventListener('change', handleCheckboxChange);
+    });
+    
+    function handleCheckboxChange() {
+        const deliverableId = this.dataset.id;
+        const isChecked = this.checked;
+        const deliverableItem = this.closest('.deliverable-item');
+        const textSpan = deliverableItem.querySelector('.deliverable-text');
+        const statusBadge = deliverableItem.querySelector('.status-badge');
+        const evidenceCount = deliverableItem.querySelectorAll('.evidence-item').length;
+        const requiresEv = requiresEvidence(deliverableItem);
+        
+        // STRICT ENFORCEMENT: Check if evidence is required but missing
+        if (isChecked && requiresEv && evidenceCount === 0) {
+            showNotification('❌ Evidence required before marking as complete! Please upload evidence first.', 'warning');
+            this.checked = false;
+            return;
+        }
+        
+        // Optimistic UI update
+        if (isChecked) {
+            textSpan.classList.add('text-success', 'fw-bold');
+            if (!statusBadge) {
+                const newBadge = document.createElement('span');
+                newBadge.className = 'badge bg-success ms-2 status-badge';
+                newBadge.textContent = '✓ Completed';
+                deliverableItem.querySelector('.flex-grow-1').appendChild(newBadge);
+            }
+        } else {
+            textSpan.classList.remove('text-success', 'fw-bold');
+            if (statusBadge) statusBadge.remove();
+        }
+        
+        // Send AJAX request to toggle completion
+        fetch(`/toggle_deliverable/${deliverableId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update completion displays
+                completionDisplay.value = data.new_completion;
+                completionHidden.value = data.new_completion;
+                completionBadge.textContent = data.new_completion + '% Complete';
+                
+                // Update counts
+                const totalCount = document.querySelectorAll('.deliverable-checkbox').length;
+                deliverableCount.textContent = totalCount;
+                
+                // 🔥 AUTO-UPDATE STATUS WHEN 100% COMPLETE
+                checkAndUpdateStatus(data.new_completion);
+                
+                showNotification('Progress updated!', 'success');
+            } else {
+                // Revert checkbox if failed
                 this.checked = !isChecked;
                 
                 // Revert UI
@@ -430,10 +519,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (badge) badge.remove();
                 }
                 
-                showNotification('Connection error', 'danger');
-            });
+                showNotification(data.error || 'Error updating progress', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Revert checkbox
+            this.checked = !isChecked;
+            
+            // Revert UI
+            if (this.checked) {
+                textSpan.classList.add('text-success', 'fw-bold');
+            } else {
+                textSpan.classList.remove('text-success', 'fw-bold');
+                const badge = deliverableItem.querySelector('.status-badge');
+                if (badge) badge.remove();
+            }
+            
+            showNotification('Connection error', 'danger');
         });
-    });
+    }
     
     // File upload handling
     document.querySelectorAll('.upload-evidence-btn').forEach(btn => {
@@ -483,7 +588,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Remove "No evidence" message if present
                     const noEvidenceMsg = evidenceList.querySelector('.text-muted.small.mb-0');
-                    if (noEvidenceMsg && noEvidenceMsg.textContent.includes('No evidence')) {
+                    if (noEvidenceMsg) {
                         noEvidenceMsg.remove();
                     }
                     
@@ -496,12 +601,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         evidenceCount.textContent = currentCount + 1;
                     }
                     
-                    // Auto-check the deliverable if not already checked
-                    const checkbox = document.querySelector(`.deliverable-checkbox[data-id="${deliverableId}"]`);
-                    if (checkbox && !checkbox.checked) {
-                        checkbox.checked = true;
-                        // Trigger the change event to update completion
-                        checkbox.dispatchEvent(new Event('change'));
+                    // Update the deliverable item state
+                    const deliverableItem = document.getElementById(`deliverable-${deliverableId}`);
+                    if (deliverableItem) {
+                        updateCheckboxState(deliverableItem);
+                    }
+                    
+                    // Remove required badge if present
+                    const requiredBadge = document.querySelector(`#evidence-${deliverableId} .pulse-badge`);
+                    if (requiredBadge) {
+                        requiredBadge.remove();
                     }
                     
                     showNotification('File uploaded successfully!', 'success');
@@ -527,6 +636,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const evidenceId = btn.dataset.evidenceId;
             const evidenceItem = document.getElementById(`evidence-${evidenceId}`);
             const deliverableId = evidenceItem.closest('.deliverable-item').dataset.id;
+            const deliverableItem = document.getElementById(`deliverable-${deliverableId}`);
             
             if (!confirm('Delete this evidence file?')) return;
             
@@ -552,8 +662,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     const evidenceList = document.getElementById(`evidence-list-${deliverableId}`);
                     if (evidenceList.children.length === 0 || 
                         (evidenceList.children.length === 1 && evidenceList.children[0].classList.contains('loading-indicator'))) {
-                        evidenceList.innerHTML = '<p class="text-muted small mb-0 text-center py-2">No evidence files uploaded yet.</p>';
+                        
+                        const requiresEv = requiresEvidence(deliverableItem);
+                        if (requiresEv) {
+                            evidenceList.innerHTML = '<p class="text-muted small mb-0 text-center py-2 text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>⚠️ Evidence required before marking as complete</p>';
+                            
+                            // Add required badge back
+                            const evidenceHeader = document.querySelector(`#evidence-${deliverableId} h6`);
+                            if (evidenceHeader) {
+                                const badgeContainer = evidenceHeader.querySelector('.badge.bg-danger');
+                                if (!badgeContainer) {
+                                    const newBadge = document.createElement('span');
+                                    newBadge.className = 'badge bg-danger ms-2 pulse-badge';
+                                    newBadge.textContent = 'REQUIRED';
+                                    evidenceHeader.appendChild(newBadge);
+                                }
+                            }
+                        } else {
+                            evidenceList.innerHTML = '<p class="text-muted small mb-0 text-center py-2">No evidence files uploaded yet.</p>';
+                        }
                     }
+                    
+                    // Update checkbox state
+                    updateCheckboxState(deliverableItem);
                     
                     showNotification('File deleted', 'success');
                 } else {
@@ -592,7 +723,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showNotification(message, type) {
-        // Create notification element
         const alert = document.createElement('div');
         alert.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
         alert.style.zIndex = '9999';
@@ -604,10 +734,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         document.body.appendChild(alert);
         
-        // Auto-remove after 3 seconds
-        setTimeout(() => {
-            alert.remove();
-        }, 3000);
+        setTimeout(() => alert.remove(), 3000);
     }
     
     // Auto-calculate duration
@@ -632,40 +759,141 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-.workplan-card { background: #fff !important; color: #212529 !important; }
-.form-label { color: #212529 !important; }
-.form-control, .form-select { background: #fff !important; color: #212529 !important; }
-.form-control:disabled, .form-select:disabled { 
-    background-color: #f8f9fa !important; 
-    opacity: 0.6; 
-    cursor: not-allowed !important; 
+/* Custom styles */
+.workplan-card {
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    border: none;
 }
+
+/* Form labels - white on green */
+.form-label {
+    color: white !important;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Input fields - white background with slight transparency */
+.form-control, .form-select {
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.9) !important;
+    color: #212529 !important;
+}
+
+.form-control:focus, .form-select:focus {
+    background: white !important;
+    box-shadow: 0 0 0 0.25rem rgba(255,255,255,0.25);
+}
+
+.form-control[readonly] {
+    background: #f8f9fa !important;
+}
+
+/* Buttons */
+.btn-modern {
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.btn-success {
+    background: #28a745;
+    border: none;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+/* Deliverables section */
 .deliverable-item {
     transition: all 0.2s ease;
+    border: 1px solid #dee2e6;
 }
+
 .deliverable-item:hover {
     background-color: #e9ecef !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
+
+/* Evidence section */
+.evidence-item {
+    transition: all 0.2s ease;
+}
+
+.evidence-item:hover {
+    background-color: #dee2e6 !important;
+}
+
+/* Checkbox styling */
 .form-check-input:checked {
     background-color: #198754;
     border-color: #198754;
 }
+
 .form-check-input:focus {
     border-color: #86b7fe;
     outline: 0;
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
-.evidence-item {
-    transition: all 0.2s ease;
+
+.form-check-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
-.evidence-item:hover {
-    background-color: #dee2e6 !important;
-}
+
+/* Badge styling */
 .badge.bg-primary {
     font-size: 0.7rem;
 }
+
+.text-white-50 {
+    color: rgba(255,255,255,0.7) !important;
+}
+
+/* Pulse animation for required badge */
+.pulse-badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* Loading indicator */
 .loading-indicator {
     color: #0d6efd;
+}
+
+/* Card headers */
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    font-weight: 600;
+}
+
+/* 🔥 Highlight for auto-updated status */
+select[name="status"].border-success.bg-success.bg-opacity-10 {
+    border: 2px solid #28a745 !important;
+    transition: all 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .btn-modern {
+        width: 100%;
+        margin: 0.25rem 0;
+    }
 }
 </style>
 {% endblock %}

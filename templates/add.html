@@ -1,136 +1,353 @@
 {% extends 'base.html' %}
+{% block title %}Add New Workplan - Workplan Manager{% endblock %}
+
 {% block content %}
-<h2>{% if workplan %}Edit{% else %}Add{% endif %} Workplan</h2>
-
-<!-- CLOSE MAIN FORM BEFORE DYNAMIC SECTIONS -->
-</form>
-
-{% if workplan %}
-<!-- DYNAMIC DELIVERABLES (EDIT MODE ONLY) -->
-<div class="mb-4">
-    <label class="form-label fw-bold">Deliverables ({{ workplan.deliverables|length }})</label>
-    {% for deliverable in workplan.deliverables %}
-    <div class="border p-3 mb-2 bg-light rounded">
-        <div class="d-flex justify-content-between align-items-center">
-            <span>• {{ deliverable.description }}</span>
-            <a href="{{ url_for('delete_deliverable', deliverable_id=deliverable.id) }}" 
-               class="btn btn-sm btn-outline-danger" 
-               onclick="return confirm('Delete this deliverable?')">×</a>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-white">
+                <i class="bi bi-plus-circle me-2"></i>Add New Workplan
+            </h2>
+            <a href="
+                {% if current_user.is_admin() %}
+                    {{ url_for('users_list') }}
+                {% else %}
+                    {{ url_for('user_projects', user_id=current_user.id) }}
+                {% endif %}
+            " class="btn btn-outline-light btn-modern">
+                <i class="bi bi-arrow-left me-1"></i>Cancel
+            </a>
         </div>
-    </div>
-    {% endfor %}
-    
-    <!-- STANDALONE DELIVERABLE FORM -->
-    <form method="POST" action="{{ url_for('add_deliverable', workplan_id=workplan.id) }}" 
-          class="border p-3 bg-light rounded">
-        <div class="input-group input-group-sm">
-            <input type="text" name="description" class="form-control" 
-                   placeholder="Add new deliverable..." required>
-            <button type="submit" class="btn btn-success">Add Deliverable</button>
-        </div>
-    </form>
-</div>
 
-<!-- DYNAMIC KPIs (EDIT MODE ONLY) -->
-<div class="mb-4">
-    <label class="form-label fw-bold">KPIs ({{ workplan.kpis|length }})</label>
-    {% for kpi in workplan.kpis %}
-    <div class="border p-3 mb-2 bg-light rounded">
-        <div class="d-flex justify-content-between align-items-center">
-            <span>• {{ kpi.description }}</span>
-            <a href="{{ url_for('delete_kpi', kpi_id=kpi.id) }}" 
-               class="btn btn-sm btn-outline-danger" 
-               onclick="return confirm('Delete this KPI?')">×</a>
-        </div>
-    </div>
-    {% endfor %}
-    
-    <!-- STANDALONE KPI FORM -->
-    <form method="POST" action="{{ url_for('add_kpi', workplan_id=workplan.id) }}" 
-          class="border p-3 bg-light rounded">
-        <div class="input-group input-group-sm">
-            <input type="text" name="description" class="form-control" 
-                   placeholder="Add new KPI..." required>
-            <button type="submit" class="btn btn-success">Add KPI</button>
-        </div>
-    </form>
-</div>
-{% else %}
-<!-- ADD MODE INFO -->
-<div class="alert alert-info">
-    <i class="bi bi-info-circle"></i> 
-    Deliverables and KPIs can be added after saving (Edit mode)
-</div>
-{% endif %}
+        <!-- Main Form Card -->
+        <div class="card shadow workplan-card" style="background: linear-gradient(135deg, #2ecc71, #27ae60); border: none;">
+            <div class="card-header" style="background: rgba(255,255,255,0.1); color: white; border-bottom: 1px solid rgba(255,255,255,0.2);">
+                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Workplan Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="workplanForm">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row g-4">
+                        <!-- MDA -->
+                        <div class="col-md-6">
+                            <label class="form-label text-white fw-bold">
+                                <i class="bi bi-building me-2"></i>MDA (Ministry/Department/Agency)
+                            </label>
+                            {{ form.mda(class="form-control bg-white bg-opacity-90 border-0", placeholder="e.g., Ministry of Education") }}
+                            {% if form.mda.errors %}
+                                {% for error in form.mda.errors %}
+                                    <div class="text-warning small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
 
-<!-- RE-OPEN MAIN FORM -->
-<form method="POST">
-    {{ form.hidden_tag() }}
-    
-    <!-- MDA -->
-    <div class="mb-3">
-        {{ form.mda.label(class="form-label") }}
-        {{ form.mda(class="form-control") }}
-    </div>
-    
-    <!-- Project Title -->
-    <div class="mb-3">
-        {{ form.project_title.label(class="form-label") }}
-        {{ form.project_title(class="form-control") }}
-    </div>
-    
-    <!-- Objective -->
-    <div class="mb-3">
-        {{ form.objective.label(class="form-label") }}
-        {{ form.objective(class="form-control", rows=3) }}
-    </div>
+                        <!-- Project Title -->
+                        <div class="col-md-6">
+                            <label class="form-label text-white fw-bold">
+                                <i class="bi bi-tag me-2"></i>Project Title
+                            </label>
+                            {{ form.project_title(class="form-control bg-white bg-opacity-90 border-0", placeholder="Enter project title") }}
+                            {% if form.project_title.errors %}
+                                {% for error in form.project_title.errors %}
+                                    <div class="text-warning small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
 
-    <!-- Assigned Department -->
-    <div class="mb-3">
-        {{ form.assigned_dept.label(class="form-label") }}
-        {{ form.assigned_dept(class="form-control") }}
-    </div>
-    
-    <!-- Collaborating Department -->
-    <div class="mb-3">
-        {{ form.collaborating_dept.label(class="form-label") }}
-        {{ form.collaborating_dept(class="form-control") }}
-    </div>
-    
-    <!-- Dates -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="mb-3">
-                {{ form.start_date.label(class="form-label") }}
-                {{ form.start_date(class="form-control", type="date") }}
+                        <!-- Objective -->
+                        <div class="col-12">
+                            <label class="form-label text-white fw-bold">
+                                <i class="bi bi-lightbulb me-2"></i>Objective
+                            </label>
+                            {{ form.objective(class="form-control bg-white bg-opacity-90 border-0", rows=4, placeholder="Describe the project objective...") }}
+                            {% if form.objective.errors %}
+                                {% for error in form.objective.errors %}
+                                    <div class="text-warning small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <!-- Assigned Department -->
+                        <div class="col-md-6">
+                            <label class="form-label text-white fw-bold">
+                                <i class="bi bi-people me-2"></i>Assigned Department
+                            </label>
+                            {{ form.assigned_dept(class="form-control bg-white bg-opacity-90 border-0", placeholder="e.g., Infrastructure Department") }}
+                            {% if form.assigned_dept.errors %}
+                                {% for error in form.assigned_dept.errors %}
+                                    <div class="text-warning small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <!-- Collaborating Department -->
+                        <div class="col-md-6">
+                            <label class="form-label text-white fw-bold">
+                                <i class="bi bi-people-fill me-2"></i>Collaborating Department
+                            </label>
+                            {{ form.collaborating_dept(class="form-control bg-white bg-opacity-90 border-0", placeholder="Optional - collaborating department") }}
+                            {% if form.collaborating_dept.errors %}
+                                {% for error in form.collaborating_dept.errors %}
+                                    <div class="text-warning small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                            <small class="text-white-50">Leave blank if none</small>
+                        </div>
+
+                        <!-- Start Date -->
+                        <div class="col-md-4">
+                            <label class="form-label text-white fw-bold">
+                                <i class="bi bi-calendar-start me-2"></i>Start Date
+                            </label>
+                            {{ form.start_date(class="form-control bg-white bg-opacity-90 border-0", type="date") }}
+                            {% if form.start_date.errors %}
+                                {% for error in form.start_date.errors %}
+                                    <div class="text-warning small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <!-- End Date -->
+                        <div class="col-md-4">
+                            <label class="form-label text-white fw-bold">
+                                <i class="bi bi-calendar-end me-2"></i>End Date
+                            </label>
+                            {{ form.end_date(class="form-control bg-white bg-opacity-90 border-0", type="date") }}
+                            {% if form.end_date.errors %}
+                                {% for error in form.end_date.errors %}
+                                    <div class="text-warning small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <!-- Duration -->
+                        <div class="col-md-4">
+                            <label class="form-label text-white fw-bold">
+                                <i class="bi bi-clock-history me-2"></i>Duration (days)
+                            </label>
+                            {{ form.duration(class="form-control bg-light", readonly=True, style="color: #212529;") }}
+                            <small class="text-white-50">Auto-calculated from dates</small>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="col-md-6">
+                            <label class="form-label text-white fw-bold">
+                                <i class="bi bi-flag me-2"></i>Status
+                            </label>
+                            {{ form.status(class="form-select bg-white bg-opacity-90 border-0") }}
+                            {% if form.status.errors %}
+                                {% for error in form.status.errors %}
+                                    <div class="text-warning small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <!-- Info Note -->
+                        <div class="col-12">
+                            <div class="alert" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white;">
+                                <div class="d-flex">
+                                    <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+                                    <div>
+                                        <strong>Note:</strong> After creating the workplan, you'll be able to:
+                                        <ul class="mb-0 mt-2">
+                                            <li>Add deliverables with optional evidence requirements</li>
+                                            <li>Add KPIs to track performance</li>
+                                            <li>Upload evidence files for completed deliverables</li>
+                                            {% if not current_user.is_admin() %}
+                                            <li>You have <strong>2 edit attempts</strong> for this project</li>
+                                            {% endif %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-end gap-2 mt-5">
+                        <a href="
+                            {% if current_user.is_admin() %}
+                                {{ url_for('users_list') }}
+                            {% else %}
+                                {{ url_for('user_projects', user_id=current_user.id) }}
+                            {% endif %}
+                        " class="btn btn-outline-light btn-modern px-5 py-3">
+                            <i class="bi bi-x-lg me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-success btn-modern px-5 py-3">
+                            <i class="bi bi-check-lg me-2"></i>Create Workplan
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="mb-3">
-                {{ form.end_date.label(class="form-label") }}
-                {{ form.end_date(class="form-control", type="date") }}
+
+        <!-- Quick Tips Card -->
+        <div class="card shadow workplan-card mt-4" style="background: white;">
+            <div class="card-header" style="background: rgba(0,0,0,0.03);">
+                <h5 class="mb-0"><i class="bi bi-lightbulb text-warning me-2"></i>Quick Tips</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <small>Be specific with objectives</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <small>Set realistic dates</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <small>Add deliverables after creation</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+</div>
+
+<!-- Auto-calculate Duration Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startInput = document.querySelector('input[name="start_date"]');
+    const endInput = document.querySelector('input[name="end_date"]');
+    const durationInput = document.querySelector('input[name="duration"]');
     
-    <!-- Duration -->
-    <div class="mb-3">
-        {{ form.duration.label(class="form-label") }}
-        {{ form.duration(class="form-control", readonly=True) }}
-        <small class="form-text text-muted">Auto-calculated from dates</small>
-    </div>
+    if (startInput && endInput && durationInput) {
+        function calculateDuration() {
+            if (startInput.value && endInput.value) {
+                const start = new Date(startInput.value + 'T00:00:00');
+                const end = new Date(endInput.value + 'T23:59:59');
+                const diffTime = end - start;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays > 0) {
+                    durationInput.value = diffDays;
+                } else {
+                    durationInput.value = 1;
+                }
+            }
+        }
+        
+        startInput.addEventListener('change', calculateDuration);
+        endInput.addEventListener('change', calculateDuration);
+        
+        // Calculate on page load if values exist
+        if (startInput.value && endInput.value) {
+            calculateDuration();
+        }
+    }
+});
+</script>
+
+<style>
+.workplan-card {
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    border: none;
+}
+
+/* Form label styles - all white */
+.form-label {
+    color: white !important;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Input field styles */
+.form-control, .form-select {
+    border: none;
+    background: rgba(255,255,255,0.9) !important;
+    color: #212529 !important;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+}
+
+.form-control:focus, .form-select:focus {
+    background: white !important;
+    box-shadow: 0 0 0 0.25rem rgba(255,255,255,0.25);
+}
+
+/* Readonly field */
+.form-control[readonly] {
+    background: #f8f9fa !important;
+    border-color: #dee2e6;
+    cursor: not-allowed;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 12px;
+    backdrop-filter: blur(5px);
+}
+
+.alert ul {
+    color: white;
+    opacity: 0.9;
+    margin-top: 0.5rem;
+}
+
+/* Text utilities */
+.text-white-50 {
+    color: rgba(255,255,255,0.7) !important;
+}
+
+/* Button styles */
+.btn-modern {
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.btn-success {
+    background: #28a745;
+    border: none;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+/* Card header */
+.card-header {
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    font-weight: 600;
+}
+
+/* Error messages */
+.text-warning {
+    color: #ffc107 !important;
+    font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .workplan-card {
+        padding: 1rem !important;
+    }
     
-    <!-- 🔥 REMOVED: completion_percentage field -->
-    
-    <!-- Status -->
-    <div class="mb-3">
-        {{ form.status.label(class="form-label") }}
-        {{ form.status(class="form-select") }}
-    </div>
-    
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-        <button type="submit" class="btn btn-primary me-md-2">Save Workplan</button>
-        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
-    </div>
-</form>
+    .form-label {
+        font-size: 0.9rem;
+    }
+}
+</style>
 {% endblock %}

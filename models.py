@@ -14,25 +14,30 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     password_hash = db.Column(db.Text, nullable=False)
     role = db.Column(db.String(20), default='User')
+    # 🔥 REMOVED: edit_attempts - moved to Workplan model (per project)
     
-    # 🔥 FIXED: Use backref with foreign_keys
+    # Relationships
     workplans = db.relationship('Workplan', 
                                foreign_keys='Workplan.created_by',
                                backref='user',
                                lazy=True, 
                                cascade='all, delete-orphan')
     
-    # 🔥 Approved workplans - different backref name
     approved_workplans = db.relationship('Workplan', 
                                         foreign_keys='Workplan.approved_by',
                                         backref='approver',
                                         lazy=True)
     
-    # 🔥 Evidence uploaded by user
     uploaded_evidence = db.relationship('Evidence', 
                                        foreign_keys='Evidence.uploaded_by',
                                        backref='uploader',
                                        lazy=True)
+    
+    # Audit trail relationship
+    audit_logs = db.relationship('AuditLog', 
+                                foreign_keys='AuditLog.user_id',
+                                backref='user',
+                                lazy=True)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -46,22 +51,40 @@ class User(UserMixin, db.Model):
     def is_superadmin(self):
         return self.role == 'Superadmin'
 
+# Audit Log Model
+class AuditLog(db.Model):
+    __tablename__ = 'audit_log'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    username = db.Column(db.String(80), nullable=False)  # Store username at time of action
+    action = db.Column(db.String(50), nullable=False)  # CREATE, UPDATE, DELETE, APPROVE, REJECT, LOGIN, LOGOUT
+    entity_type = db.Column(db.String(50), nullable=False)  # Workplan, Deliverable, KPI, Evidence, User
+    entity_id = db.Column(db.Integer, nullable=True)
+    entity_name = db.Column(db.String(200), nullable=True)  # Store name/title for easy reference
+    old_values = db.Column(db.Text, nullable=True)  # JSON string of old values
+    new_values = db.Column(db.Text, nullable=True)  # JSON string of new values
+    ip_address = db.Column(db.String(50), nullable=True)
+    
+    def __repr__(self):
+        return f'<AuditLog {self.action} by {self.username} at {self.timestamp}>'
+
 class Deliverable(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     workplan_id = db.Column(db.Integer, db.ForeignKey('workplan.id'), nullable=False)
     description = db.Column(db.Text, nullable=False)
-    # 🔥 Track if deliverable is completed
     completed = db.Column(db.Boolean, default=False, nullable=False)
-    # 🔥 NEW FIELDS: Track completion details
     completed_at = db.Column(db.DateTime, nullable=True)
     completed_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    # Require evidence before marking complete
+    requires_evidence = db.Column(db.Boolean, default=False, nullable=False)
     
     workplan = db.relationship('Workplan', 
                               backref=db.backref('deliverables', 
                                                lazy=True, 
                                                cascade='all, delete-orphan'))
     
-    # 🔥 NEW RELATIONSHIP: Evidence files for this deliverable
     evidence_files = db.relationship('Evidence', 
                                     backref='deliverable', 
                                     lazy=True, 
@@ -84,21 +107,15 @@ class Evidence(db.Model):
     deliverable_id = db.Column(db.Integer, db.ForeignKey('deliverable.id'), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     file_path = db.Column(db.String(500), nullable=False)
-    file_type = db.Column(db.String(50), nullable=False)  # image, video, document, etc.
-    file_size = db.Column(db.Integer, nullable=False)  # in bytes
+    file_type = db.Column(db.String(50), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     uploaded_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    
-    # 🔥 Additional metadata (optional but useful)
-    mime_type = db.Column(db.String(100), nullable=True)  # e.g., 'image/jpeg', 'application/pdf'
-    description = db.Column(db.String(500), nullable=True)  # Optional description of the evidence
-    
-    def __repr__(self):
-        return f'<Evidence {self.filename} for Deliverable {self.deliverable_id}>'
+    mime_type = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.String(500), nullable=True)
     
     @property
     def file_size_formatted(self):
-        """Return human-readable file size"""
         if self.file_size < 1024:
             return f"{self.file_size} B"
         elif self.file_size < 1024 * 1024:
@@ -108,13 +125,10 @@ class Evidence(db.Model):
     
     @property
     def icon_class(self):
-        """Return Bootstrap icon class based on file type"""
         if self.file_type == 'image':
             return 'bi-file-image text-success'
         elif self.file_type == 'video':
             return 'bi-file-play text-danger'
-        elif self.file_type == 'audio':
-            return 'bi-file-music text-warning'
         elif self.file_type == 'pdf':
             return 'bi-file-pdf text-danger'
         elif self.file_type in ['doc', 'docx']:
@@ -140,15 +154,14 @@ class Workplan(db.Model):
     duration = db.Column(db.Integer, nullable=False, default=0)
     completion_percentage = db.Column(db.Integer, default=0)
     
-    # 🔥 APPROVAL FIELDS
+    # 🔥 NEW: Track edits per project
+    edit_attempts = db.Column(db.Integer, default=0)  # Tracks number of edits for this specific workplan
+    
+    # Approval fields
     status = db.Column(db.String(20), default='Pending')
     approved_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     approved_at = db.Column(db.DateTime, nullable=True)
     admin_comment = db.Column(db.Text, nullable=True)
-    
-    # 🔥 Backrefs AUTOMATICALLY created above
-    # workplan.user     ← from User.workplans backref
-    # workplan.approver ← from User.approved_workplans backref
     
     @property
     def duration_days(self):
@@ -162,28 +175,22 @@ class Workplan(db.Model):
             return 100
         return self.completion_percentage
     
-    # 🔥 Calculate completion from deliverables
     @property
     def completion_from_deliverables(self):
-        """Calculate completion percentage based on completed deliverables"""
         if not self.deliverables:
             return 0
         completed_count = sum(1 for d in self.deliverables if d.completed)
         return int((completed_count / len(self.deliverables)) * 100)
     
-    # 🔥 NEW PROPERTY: Get all evidence files for this workplan
     @property
     def all_evidence(self):
-        """Return all evidence files across all deliverables"""
         evidence = []
         for deliverable in self.deliverables:
             evidence.extend(deliverable.evidence_files)
         return evidence
     
-    # 🔥 NEW PROPERTY: Count total evidence files
     @property
     def evidence_count(self):
-        """Return total number of evidence files"""
         return sum(len(deliverable.evidence_files) for deliverable in self.deliverables)
     
     @property
@@ -193,5 +200,16 @@ class Workplan(db.Model):
             'Approved': 'success', 
             'Rejected': 'danger',
             'Ongoing': 'info',
+            'Started': 'primary',
+            'Pause': 'secondary',
             'Completed': 'success'
         }.get(self.status, 'secondary')
+    
+    # 🔥 NEW: Check if this workplan can be edited by a user
+    def can_edit(self, user):
+        """Check if a user can edit this workplan"""
+        if user.is_admin():
+            return True  # Admins can always edit
+        if self.created_by != user.id:
+            return False  # Not the owner
+        return self.edit_attempts < 5  # Max 5 edits per project

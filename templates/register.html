@@ -1,59 +1,277 @@
 {% extends 'base.html' %}
 {% block title %}Register - Workplan Manager{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
-        <div class="card shadow-lg border-0 rounded-4">
-            <div class="card-body p-5">
-                <div class="text-center mb-5">
-                    <h2 class="fw-bold text-primary">Create Account</h2>
-                    <p class="text-muted">Join Workplan Manager</p>
+        <div class="workplan-card p-5" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <div class="display-1 text-white mb-3">
+                    <i class="bi bi-person-plus"></i>
                 </div>
-                <form method="POST">
-                    {{ form.hidden_tag() }}
-                    <div class="row">
-                        <div class="col-md-6 mb-4">
-                            {{ form.username.label(class="form-label") }}
-                            {{ form.username(class="form-control rounded-pill") }}
+                <h2 class="fw-bold text-white">Create Account</h2>
+                <p class="text-white-50">Join Workplan Manager to track your projects</p>
+            </div>
+
+            <!-- Display flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
-                        <div class="col-md-6 mb-4">
-                            {{ form.mda_name.label(class="form-label") }}
-                            {{ form.mda_name(class="form-control rounded-pill") }}
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-4">
-                            {{ form.email.label(class="form-label") }}
-                            {{ form.email(class="form-control rounded-pill") }}
-                        </div>
-                        <div class="col-md-6 mb-4">
-                            {{ form.phone.label(class="form-label") }}
-                            {{ form.phone(class="form-control rounded-pill") }}
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-4">
-                            {{ form.password.label(class="form-label") }}
-                            {{ form.password(class="form-control rounded-pill") }}
-                        </div>
-                        <div class="col-md-6 mb-4">
-                            {{ form.confirm_password.label(class="form-label") }}
-                            {{ form.confirm_password(class="form-control rounded-pill") }}
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        {{ form.role.label(class="form-label") }}
-                        {{ form.role(class="form-select rounded-pill") }}
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill mb-3">
-                        <i class="bi bi-person-plus me-2"></i>Create Account
-                    </button>
-                </form>
-                <div class="text-center">
-                    <p>Already have an account? <a href="{{ url_for('login') }}" class="text-primary fw-bold">Sign in</a></p>
-                </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Registration Form - FIXED with single CSRF token -->
+           <form method="POST" action="{{ url_for('register') }}">
+    <!-- No CSRF token for now -->
+    
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label text-white fw-bold">Username</label>
+            <input type="text" class="form-control rounded-3 bg-white bg-opacity-90 border-0" 
+                   name="username" placeholder="Choose a username" required>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label text-white fw-bold">MDA Name</label>
+            <input type="text" class="form-control rounded-3 bg-white bg-opacity-90 border-0" 
+                   name="mda_name" placeholder="Your Ministry/Department" required>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label text-white fw-bold">Email Address</label>
+            <input type="email" class="form-control rounded-3 bg-white bg-opacity-90 border-0" 
+                   name="email" placeholder="you@example.com" required>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label text-white fw-bold">Phone Number</label>
+            <input type="tel" class="form-control rounded-3 bg-white bg-opacity-90 border-0" 
+                   name="phone" placeholder="+234 XXX XXX XXXX" required>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label text-white fw-bold">Password</label>
+            <input type="password" class="form-control rounded-3 bg-white bg-opacity-90 border-0" 
+                   name="password" placeholder="Min. 6 characters" required>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label text-white fw-bold">Confirm Password</label>
+            <input type="password" class="form-control rounded-3 bg-white bg-opacity-90 border-0" 
+                   name="confirm_password" placeholder="Re-enter password" required>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label text-white fw-bold">Role</label>
+            <select class="form-select rounded-3 bg-white bg-opacity-90 border-0" name="role">
+                <option value="User">User</option>
+                <option value="Admin">Admin</option>
+                <option value="Superadmin">Superadmin</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Simple terms checkbox -->
+    <div class="mt-4 mb-4">
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="terms" name="terms" required>
+            <label class="form-check-label text-white" for="terms">
+                I agree to the Terms of Service
+            </label>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-light btn-modern w-100 py-3 mb-3 text-success fw-bold">
+        Create Account
+    </button>
+</form>
+
+            <!-- Login Link -->
+            <div class="text-center mt-4 p-3 rounded-3" style="background: rgba(255,255,255,0.1);">
+                <p class="text-white mb-0">
+                    Already have an account? 
+                    <a href="{{ url_for('login') }}" class="text-white fw-bold text-decoration-none" style="text-decoration: underline !important;">
+                        Sign In <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </p>
             </div>
         </div>
     </div>
 </div>
+
+<!-- JavaScript for form validation -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const termsCheckbox = document.getElementById('terms');
+    const termsError = document.getElementById('terms-error');
+    const termsContainer = document.getElementById('terms-container');
+    
+    form.addEventListener('submit', function(event) {
+        if (!termsCheckbox.checked) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            termsCheckbox.classList.add('is-invalid');
+            termsError.style.display = 'block';
+            termsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            return false;
+        }
+        return true;
+    });
+    
+    termsCheckbox.addEventListener('click', function() {
+        this.classList.remove('is-invalid');
+        termsError.style.display = 'none';
+    });
+});
+</script>
+
+<style>
+.workplan-card {
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    border: none;
+}
+
+.form-label {
+    color: white !important;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+.form-control, .form-select {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: rgba(255,255,255,0.9);
+    border: none;
+}
+
+.form-control:focus, .form-select:focus {
+    background: white;
+    box-shadow: 0 0 0 0.25rem rgba(255,255,255,0.25);
+    border: none;
+}
+
+.btn-modern {
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+}
+
+.btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Checkbox Styles */
+.form-check-input {
+    cursor: pointer;
+    width: 1.2em;
+    height: 1.2em;
+    margin-top: 0.15em;
+    border: 2px solid #0d6efd;
+    border-radius: 4px;
+    outline: none;
+    transition: all 0.2s ease;
+    background-color: white;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    border-color: #0d6efd;
+}
+
+.form-check-input.is-invalid {
+    border-color: #ffc107;
+    box-shadow: 0 0 0 0.25rem rgba(255,193,7,0.25);
+}
+
+.form-check-label {
+    cursor: pointer;
+    color: white !important;
+    user-select: none;
+}
+
+.form-check-label a {
+    color: white !important;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.text-white-50 {
+    color: rgba(255,255,255,0.7) !important;
+}
+
+.btn-light {
+    background: white;
+    border: none;
+}
+
+.btn-light:hover {
+    background: #f8f9fa;
+}
+
+a.text-white {
+    transition: all 0.2s ease;
+}
+
+a.text-white:hover {
+    opacity: 0.9;
+    text-decoration: underline !important;
+}
+
+.row.g-3 {
+    margin-bottom: 0.5rem;
+}
+
+.form-select {
+    color: #212529;
+}
+
+.form-select option {
+    background: white;
+    color: #212529;
+}
+
+#terms-error {
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255,193,7,0.2);
+    border-radius: 8px;
+    color: #ffc107 !important;
+    font-weight: 500;
+}
+
+#terms-container {
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+#terms-container:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.alert {
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+</style>
 {% endblock %}

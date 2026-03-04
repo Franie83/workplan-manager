@@ -5,10 +5,10 @@
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold text-primary">
+            <h2 class="fw-bold text-white">
                 <i class="bi bi-plus-circle me-2"></i>Add New User
             </h2>
-            <a href="{{ url_for('superadmin_users_list') }}" class="btn btn-outline-secondary">
+            <a href="{{ url_for('users_list') }}" class="btn btn-outline-light btn-modern">
                 <i class="bi bi-arrow-left me-1"></i>Back to Users
             </a>
         </div>
@@ -67,10 +67,10 @@
                     </div>
                     
                     <div class="mt-4 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary btn-modern flex-grow-1">
+                        <button type="submit" class="btn btn-success btn-modern flex-grow-1">
                             <i class="bi bi-check-lg me-2"></i>Create User
                         </button>
-                        <a href="{{ url_for('superadmin_users_list') }}" class="btn btn-outline-secondary">
+                        <a href="{{ url_for('users_list') }}" class="btn btn-outline-secondary">
                             Cancel
                         </a>
                     </div>
@@ -79,4 +79,37 @@
         </div>
     </div>
 </div>
+
+<style>
+.workplan-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.form-label {
+    color: #212529;
+    font-weight: 600;
+}
+.form-control, .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.25rem rgba(30, 58, 138, 0.25);
+}
+.btn-modern {
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+.text-danger {
+    font-size: 0.85rem;
+}
+</style>
 {% endblock %}

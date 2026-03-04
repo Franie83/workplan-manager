@@ -1,0 +1,579 @@
+{% extends 'base.html' %}
+{% block title %}Audit Log - Workplan Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-12">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-white">
+                <i class="bi bi-journal-text me-2"></i>Audit Log
+                <span class="badge bg-light text-dark ms-2">{{ logs.total }} Events</span>
+            </h2>
+            <div>
+                <a href="{{ url_for('users_list') }}" class="btn btn-outline-light btn-modern me-2">
+                    <i class="bi bi-arrow-left me-1"></i>Back to MDAs
+                </a>
+                <button class="btn btn-warning btn-modern" onclick="location.reload()">
+                    <i class="bi bi-arrow-repeat me-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Cards -->
+        <div class="row mb-4 g-3">
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-primary shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-clock-history fs-1 text-primary mb-2"></i>
+                        <h3 class="fw-bold text-primary">{{ logs.total }}</h3>
+                        <p class="mb-0 text-muted">Total Events</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-success shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-plus-circle-fill fs-1 text-success mb-2"></i>
+                        <h3 class="fw-bold text-success">{{ logs.items|selectattr('action', 'equalto', 'CREATE')|list|length }}</h3>
+                        <p class="mb-0 text-muted">Creations</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-warning shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-pencil-square fs-1 text-warning mb-2"></i>
+                        <h3 class="fw-bold text-warning">{{ logs.items|selectattr('action', 'equalto', 'UPDATE')|list|length }}</h3>
+                        <p class="mb-0 text-muted">Updates</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-danger shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-trash-fill fs-1 text-danger mb-2"></i>
+                        <h3 class="fw-bold text-danger">{{ logs.items|selectattr('action', 'equalto', 'DELETE')|list|length }}</h3>
+                        <p class="mb-0 text-muted">Deletions</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="admin-card p-3 mb-4" style="background: white; border-radius: 20px;">
+            <form method="GET" class="row g-3 align-items-center">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold mb-1">Action Type</label>
+                    <select name="action" class="form-select">
+                        <option value="">All Actions</option>
+                        {% for action in actions %}
+                        <option value="{{ action }}" {% if current_action == action %}selected{% endif %}>{{ action }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold mb-1">Entity Type</label>
+                    <select name="entity" class="form-select">
+                        <option value="">All Entities</option>
+                        {% for entity in entities %}
+                        <option value="{{ entity }}" {% if current_entity == entity %}selected{% endif %}>{{ entity }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold mb-1">Date Range</label>
+                    <select name="date_range" class="form-select">
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="3months">Last 3 Months</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold mb-1">&nbsp;</label>
+                    <div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-funnel me-1"></i>Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- View Toggle Buttons -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="text-white-50">
+                <i class="bi bi-info-circle me-1"></i>
+                <span id="viewStatus">Click a button to filter view</span>
+            </div>
+            <div>
+                <button class="btn btn-light btn-modern me-2" onclick="showAllRows()">
+                    <i class="bi bi-table me-1"></i>Show All
+                </button>
+                <button class="btn btn-light btn-modern me-2" onclick="hideAllRows()">
+                    <i class="bi bi-eye-slash me-1"></i>Hide All
+                </button>
+                <button class="btn btn-light btn-modern" onclick="showFilteredRows()">
+                    <i class="bi bi-funnel me-1"></i>Show Filtered
+                </button>
+            </div>
+        </div>
+
+        <!-- Audit Log Table -->
+        <div class="admin-card p-4" style="background: white; border-radius: 20px;">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Entity</th>
+                            <th>Item</th>
+                            <th>Changes</th>
+                            <th>IP Address</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditTableBody">
+                        {% for log in logs.items %}
+                        <tr class="audit-row" 
+                            data-action="{{ log.action }}"
+                            data-entity="{{ log.entity_type }}">
+                            <td>
+                                <span class="fw-bold" title="{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}">
+                                    <i class="bi bi-clock me-1 text-muted"></i>
+                                    {{ log.timestamp.strftime('%H:%M:%S') }}
+                                </span>
+                                <br>
+                                <small class="text-muted">{{ log.timestamp.strftime('%Y-%m-%d') }}</small>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-person-circle fs-5 me-2 text-primary"></i>
+                                    <div>
+                                        <strong>{{ log.username }}</strong>
+                                        <br>
+                                        <small class="text-muted">ID: {{ log.user_id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if log.action == 'CREATE' %}bg-success
+                                    {% elif log.action == 'UPDATE' %}bg-warning text-dark
+                                    {% elif log.action == 'DELETE' %}bg-danger
+                                    {% elif log.action == 'APPROVE' %}bg-info
+                                    {% elif log.action == 'REJECT' %}bg-secondary
+                                    {% elif log.action == 'LOGIN' %}bg-primary
+                                    {% elif log.action == 'LOGOUT' %}bg-dark
+                                    {% else %}bg-secondary{% endif %} 
+                                    rounded-pill px-3 py-2">
+                                    <i class="bi 
+                                        {% if log.action == 'CREATE' %}bi-plus-circle
+                                        {% elif log.action == 'UPDATE' %}bi-pencil
+                                        {% elif log.action == 'DELETE' %}bi-trash
+                                        {% elif log.action == 'APPROVE' %}bi-check-circle
+                                        {% elif log.action == 'REJECT' %}bi-x-circle
+                                        {% elif log.action == 'LOGIN' %}bi-box-arrow-in-right
+                                        {% elif log.action == 'LOGOUT' %}bi-box-arrow-right
+                                        {% else %}bi-question{% endif %} me-1">
+                                    </i>
+                                    {{ log.action }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary rounded-pill px-3 py-2">
+                                    <i class="bi 
+                                        {% if log.entity_type == 'User' %}bi-person
+                                        {% elif log.entity_type == 'Workplan' %}bi-folder
+                                        {% elif log.entity_type == 'Deliverable' %}bi-check2-square
+                                        {% elif log.entity_type == 'KPI' %}bi-graph-up
+                                        {% elif log.entity_type == 'Evidence' %}bi-file-earmark
+                                        {% else %}bi-question{% endif %} me-1">
+                                    </i>
+                                    {{ log.entity_type }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if log.entity_name %}
+                                <span class="fw-bold">{{ log.entity_name|truncate(30) }}</span>
+                                <br>
+                                <small class="text-muted">ID: {{ log.entity_id }}</small>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.old_values or log.new_values %}
+                                <button class="btn btn-sm btn-outline-info" 
+                                        onclick="showChanges('{{ log.id }}')"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#changesModal">
+                                    <i class="bi bi-eye"></i> View
+                                </button>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <code class="text-muted small">{{ log.ip_address or 'N/A' }}</code>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary" 
+                                        onclick="showDetails('{{ log.id }}', '{{ log.username }}', '{{ log.action }}', '{{ log.entity_type }}', '{{ log.entity_name or '' }}', {{ log.entity_id or 'null' }}, '{{ log.ip_address or '' }}', '{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}')"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#detailsModal">
+                                    <i class="bi bi-info-circle"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="bi bi-journal-x fs-1 d-block mb-3 text-muted"></i>
+                                <h5 class="text-muted">No audit logs found</h5>
+                                <p class="text-muted">Activity will appear here as users interact with the system</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- No Results Message -->
+            <div id="noResultsMessage" class="text-center py-4" style="display: none;">
+                <i class="bi bi-search fs-1 text-muted mb-3"></i>
+                <h5 class="text-muted">No matching records found</h5>
+                <p class="text-muted">Try adjusting your filters</p>
+            </div>
+
+            <!-- Pagination -->
+            {% if logs.pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if logs.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('audit_log', page=logs.prev_num, action=current_action, entity=current_entity) }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in logs.iter_pages() %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == logs.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('audit_log', page=page_num, action=current_action, entity=current_entity) }}">{{ page_num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if logs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('audit_log', page=logs.next_num, action=current_action, entity=current_entity) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Changes Modal -->
+<div class="modal fade" id="changesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-left-right me-2"></i>
+                    Value Changes
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-danger mb-3">
+                            <i class="bi bi-arrow-left me-2"></i>Old Values
+                        </h6>
+                        <div id="oldValues" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto; font-family: monospace;">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-success mb-3">
+                            <i class="bi bi-arrow-right me-2"></i>New Values
+                        </h6>
+                        <div id="newValues" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto; font-family: monospace;">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Audit Log Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsModalBody">
+                <!-- Populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Store change data for each log
+const changeData = {
+    {% for log in logs.items %}
+    {% if log.old_values or log.new_values %}
+    "{{ log.id }}": {
+        old: {{ log.old_values|tojson|safe }},
+        new: {{ log.new_values|tojson|safe }}
+    },
+    {% endif %}
+    {% endfor %}
+};
+
+// Simple global functions
+function showAllRows() {
+    document.querySelectorAll('.audit-row').forEach(row => {
+        row.style.display = '';
+    });
+    document.getElementById('viewStatus').innerHTML = 'Showing all {{ logs.total }} events';
+    document.getElementById('noResultsMessage').style.display = 'none';
+}
+
+function hideAllRows() {
+    document.querySelectorAll('.audit-row').forEach(row => {
+        row.style.display = 'none';
+    });
+    document.getElementById('viewStatus').innerHTML = 'All rows hidden';
+    document.getElementById('noResultsMessage').style.display = 'block';
+}
+
+function showFilteredRows() {
+    const currentAction = "{{ current_action }}";
+    const currentEntity = "{{ current_entity }}";
+    let visibleCount = 0;
+    
+    document.querySelectorAll('.audit-row').forEach(row => {
+        const action = row.dataset.action;
+        const entity = row.dataset.entity;
+        
+        if ((!currentAction || action === currentAction) && 
+            (!currentEntity || entity === currentEntity)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    if (visibleCount > 0) {
+        document.getElementById('viewStatus').innerHTML = `Showing ${visibleCount} filtered rows`;
+        document.getElementById('noResultsMessage').style.display = 'none';
+    } else {
+        document.getElementById('viewStatus').innerHTML = 'No matching rows';
+        document.getElementById('noResultsMessage').style.display = 'block';
+    }
+}
+
+// Show changes in modal
+function showChanges(logId) {
+    const data = changeData[logId];
+    if (!data) {
+        document.getElementById('oldValues').innerHTML = '<p class="text-muted text-center py-3">No data available</p>';
+        document.getElementById('newValues').innerHTML = '<p class="text-muted text-center py-3">No data available</p>';
+        return;
+    }
+    
+    // Display old values
+    if (data.old) {
+        try {
+            const oldData = typeof data.old === 'string' ? JSON.parse(data.old) : data.old;
+            document.getElementById('oldValues').innerHTML = formatJSON(oldData);
+        } catch (e) {
+            document.getElementById('oldValues').innerHTML = '<pre class="text-muted">' + data.old + '</pre>';
+        }
+    } else {
+        document.getElementById('oldValues').innerHTML = '<p class="text-muted text-center py-3">No old values</p>';
+    }
+    
+    // Display new values
+    if (data.new) {
+        try {
+            const newData = typeof data.new === 'string' ? JSON.parse(data.new) : data.new;
+            document.getElementById('newValues').innerHTML = formatJSON(newData);
+        } catch (e) {
+            document.getElementById('newValues').innerHTML = '<pre class="text-muted">' + data.new + '</pre>';
+        }
+    } else {
+        document.getElementById('newValues').innerHTML = '<p class="text-muted text-center py-3">No new values</p>';
+    }
+}
+
+// Format JSON data as HTML
+function formatJSON(data) {
+    let html = '<dl class="row mb-0">';
+    for (let [key, value] of Object.entries(data)) {
+        const displayValue = value !== null && value !== undefined ? value : '<em>null</em>';
+        html += `
+            <dt class="col-sm-4 text-truncate fw-bold">${key}:</dt>
+            <dd class="col-sm-8">${displayValue}</dd>
+        `;
+    }
+    html += '</dl>';
+    return html;
+}
+
+// Show details in modal
+function showDetails(logId, username, action, entityType, entityName, entityId, ipAddress, timestamp) {
+    const modalBody = document.getElementById('detailsModalBody');
+    modalBody.innerHTML = `
+        <table class="table table-sm table-borderless">
+            <tr>
+                <th width="120">Log ID:</th>
+                <td><strong>#${logId}</strong></td>
+            </tr>
+            <tr>
+                <th>Timestamp:</th>
+                <td>${timestamp}</td>
+            </tr>
+            <tr>
+                <th>User:</th>
+                <td>${username}</td>
+            </tr>
+            <tr>
+                <th>Action:</th>
+                <td><span class="badge bg-info">${action}</span></td>
+            </tr>
+            <tr>
+                <th>Entity:</th>
+                <td>${entityType}</td>
+            </tr>
+            <tr>
+                <th>Item:</th>
+                <td>${entityName} ${entityId ? '(ID: ' + entityId + ')' : ''}</td>
+            </tr>
+            <tr>
+                <th>IP Address:</th>
+                <td><code>${ipAddress}</code></td>
+            </tr>
+        </table>
+    `;
+}
+
+// Hide all rows on page load
+document.addEventListener('DOMContentLoaded', function() {
+    hideAllRows();
+});
+</script>
+
+<style>
+.admin-card { 
+    background: white; 
+    border-radius: 20px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+}
+.table th { 
+    background: #1e3a8a; 
+    color: white; 
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+.table td { 
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+.page-link { 
+    border-radius: 8px; 
+    margin: 0 3px;
+    color: #1e3a8a;
+}
+.page-item.active .page-link {
+    background-color: #1e3a8a;
+    border-color: #1e3a8a;
+}
+.workplan-card {
+    transition: all 0.3s ease;
+}
+.workplan-card:hover {
+    transform: translateY(-5px);
+}
+.badge {
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+code {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+.modal-content {
+    border-radius: 20px;
+}
+.modal-header {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+#oldValues, #newValues {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    background: #f8f9fa;
+    min-height: 100px;
+}
+dl.row {
+    margin-bottom: 0;
+}
+dt {
+    font-weight: 600;
+    color: #495057;
+    padding: 0.25rem 0;
+}
+dd {
+    margin-bottom: 0.25rem;
+    padding: 0.25rem 0;
+}
+
+/* Toggle button styles */
+.btn-group .btn-light {
+    background: white;
+    border: 1px solid #dee2e6;
+    color: #495057;
+}
+
+.btn-group .btn-light.active {
+    background: #1e3a8a;
+    color: white;
+    border-color: #1e3a8a;
+}
+
+.btn-group .btn-light:hover:not(.active) {
+    background: #e9ecef;
+}
+
+/* Info message styling */
+.text-white-50 {
+    color: rgba(255,255,255,0.7) !important;
+}
+</style>
+{% endblock %}

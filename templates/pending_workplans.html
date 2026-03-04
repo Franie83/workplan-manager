@@ -1,74 +1,237 @@
-<!-- templates/admin/pending_workplans.html -->
 {% extends 'base.html' %}
-{% block title %}Pending Workplans - Admin{% endblock %}
+{% block title %}Pending Approvals - Workplan Manager{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
+<div class="row justify-content-center">
+    <div class="col-lg-12">
+        <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>
-                <i class="bi bi-hourglass-split text-warning me-2"></i>
-                Pending Workplans ({{ pending|length }})
+            <h2 class="fw-bold text-white">
+                <i class="bi bi-hourglass-split me-2"></i>Pending Approvals
+                <span class="badge bg-warning text-dark ms-2">{{ pending|length }}</span>
             </h2>
-            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            <a href="{{ url_for('users_list') }}" class="btn btn-outline-light btn-modern">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
             </a>
         </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4 g-3">
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-0 shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-hourglass-split fs-1 text-warning mb-2"></i>
+                        <h3 class="fw-bold text-warning">{{ pending|length }}</h3>
+                        <p class="mb-0 text-muted">Awaiting Review</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-0 shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-check-circle-fill fs-1 text-success mb-2"></i>
+                        <h3 class="fw-bold text-success">{{ status_counts.approved or 0 }}</h3>
+                        <p class="mb-0 text-muted">Approved</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-0 shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-x-circle-fill fs-1 text-danger mb-2"></i>
+                        <h3 class="fw-bold text-danger">{{ status_counts.rejected or 0 }}</h3>
+                        <p class="mb-0 text-muted">Rejected</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center workplan-card h-100 border-0 shadow-sm" style="background: white;">
+                    <div class="card-body">
+                        <i class="bi bi-clock-history fs-1 text-info mb-2"></i>
+                        <h3 class="fw-bold text-info">{{ status_counts.ongoing or 0 }}</h3>
+                        <p class="mb-0 text-muted">In Progress</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Workplans List -->
+        {% if pending %}
+            {% for workplan in pending %}
+            <!-- Workplan Card with Green Gradient -->
+            <div class="card mb-4 workplan-card" style="background: linear-gradient(135deg, #2ecc71, #27ae60); border: none; overflow: hidden;" id="wp-{{ workplan.id }}">
+                <!-- Card Header with Semi-transparent Background -->
+                <div class="card-header py-3 px-4" style="background: rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.2);">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1 fw-bold text-white">{{ workplan.project_title }}</h5>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                                    <i class="bi bi-building me-1"></i>{{ workplan.mda }}
+                                </span>
+                                <span class="badge" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                                    <i class="bi bi-person me-1"></i>{{ workplan.user.username }}
+                                </span>
+                                <span class="badge" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                                    <i class="bi bi-calendar me-1"></i>{{ workplan.created_at.strftime('%d %b, %Y') }}
+                                </span>
+                            </div>
+                        </div>
+                        <span class="badge bg-warning text-dark px-4 py-2">
+                            <i class="bi bi-hourglass-split me-1"></i>Pending Review
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Card Body with White Background -->
+                <div class="card-body p-4" style="background: white; margin: 1rem; border-radius: 12px;">
+                    <div class="row">
+                        <!-- Left Column - Details -->
+                        <div class="col-md-8">
+                            <!-- Objective Preview -->
+                            <p class="text-muted mb-3">
+                                <i class="bi bi-quote me-1"></i>
+                                {{ workplan.objective[:200] }}{% if workplan.objective|length > 200 %}...{% endif %}
+                            </p>
+                            
+                            <!-- Details Grid -->
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">Assigned Dept</small>
+                                    <strong>{{ workplan.assigned_dept }}</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">Timeline</small>
+                                    <strong>{{ workplan.start_date.strftime('%d/%m/%y') }} - {{ workplan.end_date.strftime('%d/%m/%y') }}</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">Deliverables</small>
+                                    <strong>{{ workplan.deliverables|length }} items</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">KPIs</small>
+                                    <strong>{{ workplan.kpis|length }} metrics</strong>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column - Action Forms -->
+                        <div class="col-md-4">
+                            <div class="bg-light p-3 rounded-3">
+                                <h6 class="fw-bold mb-3">Review Decision</h6>
+                                
+                                <!-- Approve Form -->
+                                <form method="POST" action="{{ url_for('approve_workplan', workplan_id=workplan.id) }}" class="mb-3">
+                                    <div class="mb-2">
+                                        <textarea name="admin_comment" class="form-control form-control-sm" rows="2" 
+                                                  placeholder="Approval comment (optional)..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-check-circle me-2"></i>Approve
+                                    </button>
+                                </form>
+                                
+                                <!-- Reject Form -->
+                                <form method="POST" action="{{ url_for('reject_workplan', workplan_id=workplan.id) }}">
+                                    <div class="mb-2">
+                                        <textarea name="admin_comment" class="form-control form-control-sm" rows="2" required
+                                                  placeholder="Rejection reason (required)..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-danger w-100" 
+                                            onclick="return confirm('Reject this workplan?')">
+                                        <i class="bi bi-x-circle me-2"></i>Reject
+                                    </button>
+                                </form>
+                                
+                                <!-- View Details Link -->
+                                <div class="text-center mt-2">
+                                    <a href="{{ url_for('view_workplan', id=workplan.id) }}" class="small text-primary">
+                                        <i class="bi bi-eye me-1"></i>View Full Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <!-- Empty State -->
+            <div class="workplan-card p-5 text-center" style="background: white;">
+                <div class="py-5">
+                    <i class="bi bi-check-circle-fill text-success display-1 mb-4"></i>
+                    <h3 class="text-success mb-3">All Caught Up!</h3>
+                    <p class="text-muted mb-4">No workplans pending approval at the moment.</p>
+                    <a href="{{ url_for('users_list') }}" class="btn btn-primary btn-modern px-5">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        {% endif %}
     </div>
 </div>
 
-{% for workplan in pending %}
-<div class="card workplan-card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-start">
-        <div>
-            <h5 class="mb-1 fw-bold">{{ workplan.mda }}</h5>
-            <h6 class="text-muted mb-0">{{ workplan.project_title }}</h6>
-        </div>
-        <span class="badge bg-warning fs-6 px-3 py-2">Pending Review</span>
-    </div>
+<style>
+.workplan-card {
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.workplan-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+}
+
+.btn-modern {
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* Custom styles for green theme */
+.card-header .badge {
+    backdrop-filter: blur(5px);
+}
+
+/* Empty state icon animation */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.display-1 {
+    animation: pulse 2s infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.5rem;
+    }
     
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-8">
-                <h6>Details</h6>
-                <p><strong>Start:</strong> {{ workplan.start_date }} | <strong>End:</strong> {{ workplan.end_date }} | <strong>Duration:</strong> {{ workplan.duration }} days</p>
-                <p><strong>Submitted:</strong> {{ workplan.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                <p><strong>By:</strong> {{ workplan.user.username if workplan.user else 'Unknown' }} ({{ workplan.user.email if workplan.user else 'N/A' }})</p>
-            </div>
-            <div class="col-md-4">
-                <h6>Quick Actions</h6>
-                <form method="POST" action="{{ url_for('approve_workplan', workplan_id=workplan.id) }}" class="mb-3">
-                    <div class="mb-2">
-                        <textarea name="admin_comment" class="form-control" rows="2" placeholder="Approval comment (optional)..."></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-success w-100 mb-1">
-                        <i class="bi bi-check-lg me-1"></i>Approve
-                    </button>
-                </form>
-                
-                <form method="POST" action="{{ url_for('reject_workplan', workplan_id=workplan.id) }}">
-                    <div class="mb-2">
-                        <textarea name="admin_comment" class="form-control" rows="2" placeholder="Rejection reason (required)..."></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Reject this workplan?')">
-                        <i class="bi bi-x-lg me-1"></i>Reject
-                    </button>
-                </form>
-                
-                <a href="{{ url_for('view_workplan', id=workplan.id) }}" class="btn btn-outline-primary w-100 mt-1 btn-sm">
-                    <i class="bi bi-eye me-1"></i>View Details
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-{% endfor %}
-
-{% if not pending %}
-<div class="text-center py-5">
-    <i class="bi bi-check-circle-fill text-success fs-1 mb-3"></i>
-    <h4 class="text-success">No pending workplans</h4>
-    <p class="text-muted">All workplans are approved or rejected.</p>
-</div>
-{% endif %}
+    .badge.px-4.py-2 {
+        align-self: flex-start;
+    }
+    
+    .card-body.p-4 {
+        margin: 0.5rem !important;
+        padding: 1rem !important;
+    }
+}
+</style>
 {% endblock %}
