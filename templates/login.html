@@ -47,6 +47,24 @@
     </button>
 </form>
 
+            <!-- Quick Login Section -->
+            <div class="mt-4 pt-3 border-top" style="border-color: rgba(255,255,255,0.2) !important;">
+                <p class="text-center text-white mb-3" style="font-size: 0.9rem;">
+                    <i class="bi bi-lightning-fill me-1"></i> Quick Login (Development Only)
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('quick_login', role='user') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                        <i class="bi bi-person me-2"></i>Login as User (testuser)
+                    </a>
+                    <a href="{{ url_for('quick_login', role='admin') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                        <i class="bi bi-shield me-2"></i>Login as Admin (admin)
+                    </a>
+                    <a href="{{ url_for('quick_login', role='superadmin') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                        <i class="bi bi-crown me-2"></i>Login as Superadmin (superadmin)
+                    </a>
+                </div>
+            </div>
+
             <!-- Register Link -->
             <div class="text-center mt-4 p-3 rounded-3" style="background: rgba(255,255,255,0.1);">
                 <p class="text-white mb-0">
@@ -63,7 +81,8 @@
                     <i class="bi bi-info-circle me-2"></i>
                     <strong class="text-white">Demo Credentials:</strong><br>
                     <span class="text-white-50">Admin: admin@example.com / admin123</span><br>
-                    <span class="text-white-50">User: test@example.com / test123</span>
+                    <span class="text-white-50">User: user@example.com / password123</span><br>
+                    <span class="text-white-50">Superadmin: superadmin@example.com / password123</span>
                 </small>
             </div>
         </div>
@@ -165,6 +184,17 @@ a.text-white {
 a.text-white:hover {
     opacity: 0.9;
     text-decoration: underline !important;
+}
+
+/* Quick Login Button Hover Effects */
+.d-grid .btn:hover {
+    background: rgba(255,255,255,0.3) !important;
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+.border-top {
+    border-color: rgba(255,255,255,0.2) !important;
 }
 </style>
 {% endblock %}
