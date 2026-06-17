@@ -81,6 +81,41 @@ def log_audit(action, entity_type, entity_id=None, entity_name=None, old_values=
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+# Helper function to update workplan status based on dates and progress
+def update_workplan_status(workplan):
+    """Automatically update workplan status based on dates and completion"""
+    today = date.today()
+    
+    # 🔥 CRITICAL: Don't override manual statuses
+    manual_statuses = ['Pending', 'Rejected', 'Completed']
+    if workplan.status in manual_statuses:
+        return workplan.status
+    
+    # Auto-update only for statuses that can transition automatically
+    if workplan.status == 'Approved':
+        # Approved stays Approved until work starts
+        return 'Approved'
+    elif workplan.completion_percentage >= 100:
+        return 'Completed'
+    elif workplan.end_date < today and workplan.status != 'Completed':
+        return 'Pause'  # Overdue
+    elif workplan.start_date <= today and workplan.completion_percentage > 0 and workplan.status != 'Completed':
+        return 'Ongoing'
+    elif workplan.start_date <= today and workplan.status != 'Completed':
+        return 'Started'
+    else:
+        return workplan.status  # Keep current status
+
+# Helper function to get MDA list for dropdown
+def get_mda_list():
+    """Get unique MDA names from all users"""
+    users = User.query.all()
+    mda_set = set()
+    for user in users:
+        if user.mda_name:
+            mda_set.add(user.mda_name)
+    return sorted(list(mda_set))
+
 # Forms
 class LoginForm(FlaskForm):
     class Meta:
@@ -112,7 +147,16 @@ class EditUserForm(FlaskForm):
     role = SelectField('Role', choices=[('User', 'User'), ('Admin', 'Admin'), ('Superadmin', 'Superadmin')], default='User')
 
 class WorkplanForm(FlaskForm):
-    mda = StringField('MDA (Ministry/Department/Agency)', validators=[DataRequired()])
+    def __init__(self, *args, **kwargs):
+        super(WorkplanForm, self).__init__(*args, **kwargs)
+        # Dynamically set MDA choices from database
+        mda_list = get_mda_list()
+        if mda_list:
+            self.mda.choices = [(mda, mda) for mda in mda_list]
+        else:
+            self.mda.choices = [('', 'No MDAs available - please create a user first')]
+    
+    mda = SelectField('MDA (Ministry/Department/Agency)', validators=[DataRequired()])
     project_title = StringField('Project Title', validators=[DataRequired()])
     objective = TextAreaField('Objective', validators=[DataRequired()])
     assigned_dept = StringField('Assigned Department', validators=[DataRequired()])
@@ -122,11 +166,21 @@ class WorkplanForm(FlaskForm):
     duration = IntegerField('Duration (days)', render_kw={'readonly': True})
     status = SelectField('Status', 
                         choices=[('Pending', 'Pending'), ('Started', 'Started'), 
-                                ('Ongoing', 'Ongoing'), ('Pause', 'Pause'), ('Completed', 'Completed')],
+                                ('Ongoing', 'Ongoing'), ('Approved', 'Approved'),
+                                ('Pause', 'Pause'), ('Completed', 'Completed')],
                         default='Pending')
 
 class EditWorkplanForm(FlaskForm):
-    mda = StringField('MDA', validators=[DataRequired()])
+    def __init__(self, *args, **kwargs):
+        super(EditWorkplanForm, self).__init__(*args, **kwargs)
+        # Dynamically set MDA choices from database
+        mda_list = get_mda_list()
+        if mda_list:
+            self.mda.choices = [(mda, mda) for mda in mda_list]
+        else:
+            self.mda.choices = [('', 'No MDAs available - please create a user first')]
+    
+    mda = SelectField('MDA', validators=[DataRequired()])
     project_title = StringField('Project Title', validators=[DataRequired()])
     objective = TextAreaField('Objective', validators=[DataRequired()])
     assigned_dept = StringField('Assigned Department', validators=[DataRequired()])
@@ -136,7 +190,8 @@ class EditWorkplanForm(FlaskForm):
     duration = IntegerField('Duration (days)', render_kw={'readonly': True})
     status = SelectField('Status', 
                        choices=[('Pending', 'Pending'), ('Started', 'Started'), 
-                               ('Ongoing', 'Ongoing'), ('Pause', 'Pause'), ('Completed', 'Completed')],
+                               ('Ongoing', 'Ongoing'), ('Approved', 'Approved'),
+                               ('Pause', 'Pause'), ('Completed', 'Completed')],
                        default='Pending')
 
 # Role Decorators
@@ -219,7 +274,6 @@ def register():
         
         try:
             print("Creating new user...")
-            # 🔥 FIXED: Removed edit_attempts=0
             user = User(
                 username=form.username.data,
                 mda_name=form.mda_name.data,
@@ -355,19 +409,13 @@ def login():
     
     return render_template('login.html', form=form)
 
-# 🔥 NEW: Quick Login Route - For development/testing only
-# 🔥 UPDATED: Quick Login Route - Works in production
+# 🔥 NEW: Quick Login Route - Works in production
 @app.route('/quick-login/<string:role>')
 def quick_login(role):
     """
     Quick login for development/testing purposes.
     Usage: /quick-login/user, /quick-login/admin, /quick-login/superadmin
     """
-    # 🔥 REMOVED: Only allow in development mode check
-    # if not app.debug:
-    #     flash('Quick login is only available in development mode.', 'danger')
-    #     return redirect(url_for('login'))
-    
     # If user is already logged in, log them out first
     if current_user.is_authenticated:
         logout_user()
@@ -427,6 +475,7 @@ def quick_login(role):
         return redirect(url_for('users_list'))
     else:
         return redirect(url_for('user_projects', user_id=user.id))
+
 # FIXED: Logout route - properly separated
 @app.route('/logout')
 def logout():
@@ -468,7 +517,7 @@ def users_list():
         user.project_count = Workplan.query.filter_by(created_by=user.id).count()
         user.completed_count = Workplan.query.filter_by(created_by=user.id, status='Completed').count()
     
-    # Get status counts for navbar
+    # Get status counts for navbar - For admin, show global counts
     status_counts = {
         'pending': Workplan.query.filter_by(status='Pending').count(),
         'approved': Workplan.query.filter_by(status='Approved').count(),
@@ -490,7 +539,7 @@ def add_user():
     
     form = RegisterForm()
     
-    # Get status counts for navbar
+    # Get status counts for navbar - Global counts for admin
     status_counts = {
         'pending': Workplan.query.filter_by(status='Pending').count(),
         'approved': Workplan.query.filter_by(status='Approved').count(),
@@ -506,7 +555,6 @@ def add_user():
             flash('Email already exists!', 'danger')
             return render_template('add_user.html', form=form, status_counts=status_counts)
         
-        # 🔥 FIXED: Removed edit_attempts=0
         user = User(
             username=form.username.data,
             mda_name=form.mda_name.data,
@@ -538,7 +586,7 @@ def edit_user(id):
     
     form = EditUserForm(obj=user)
     
-    # Get status counts for navbar
+    # Get status counts for navbar - Global counts for admin
     status_counts = {
         'pending': Workplan.query.filter_by(status='Pending').count(),
         'approved': Workplan.query.filter_by(status='Approved').count(),
@@ -613,16 +661,42 @@ def user_projects(user_id):
     search_term = request.args.get('search', '').strip()
     status_filter = request.args.get('status', '').strip()
     
-    # Get status counts for navbar
+    # 🔥 FIXED: Get status counts ONLY for this user's workplans
+    # Get user's workplans first
+    user_workplans = Workplan.query.filter_by(created_by=user_id).all()
+    
+    # Calculate status counts for this user only
     status_counts = {
-        'pending': Workplan.query.filter_by(status='Pending').count(),
-        'approved': Workplan.query.filter_by(status='Approved').count(),
-        'rejected': Workplan.query.filter_by(status='Rejected').count(),
-        'ongoing': Workplan.query.filter_by(status='Ongoing').count(),
-        'completed': Workplan.query.filter_by(status='Completed').count(),
-        'started': Workplan.query.filter_by(status='Started').count(),
-        'pause': Workplan.query.filter_by(status='Pause').count()
+        'pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'ongoing': 0,
+        'completed': 0,
+        'started': 0,
+        'pause': 0
     }
+    
+    # Auto-update statuses before counting
+    for wp in user_workplans:
+        new_status = update_workplan_status(wp)
+        if new_status != wp.status:
+            wp.status = new_status
+            db.session.commit()
+        
+        if wp.status == 'Pending':
+            status_counts['pending'] += 1
+        elif wp.status == 'Approved':
+            status_counts['approved'] += 1
+        elif wp.status == 'Rejected':
+            status_counts['rejected'] += 1
+        elif wp.status == 'Ongoing':
+            status_counts['ongoing'] += 1
+        elif wp.status == 'Completed':
+            status_counts['completed'] += 1
+        elif wp.status == 'Started':
+            status_counts['started'] += 1
+        elif wp.status == 'Pause':
+            status_counts['pause'] += 1
     
     # Get user's workplans with filters
     query = Workplan.query.filter_by(created_by=user_id)
@@ -640,6 +714,13 @@ def user_projects(user_id):
     else:
         workplans = query.order_by(Workplan.created_at.desc()).all()
     
+    # Auto-update statuses for displayed workplans
+    for wp in workplans:
+        new_status = update_workplan_status(wp)
+        if new_status != wp.status:
+            wp.status = new_status
+            db.session.commit()
+    
     # Calculate stats
     if workplans:
         total_completion = sum(float(wp.completion_from_deliverables or 0) for wp in workplans)
@@ -654,6 +735,7 @@ def user_projects(user_id):
     print(f"USER PROJECTS PAGE - User: {user.username} (Role: {user.role})")
     print(f"Viewing by: {current_user.username} (Role: {current_user.role})")
     print(f"Projects found: {project_count}")
+    print(f"Status counts: {status_counts}")
     print(f"{'='*50}\n")
     
     return render_template('user_projects.html', 
@@ -691,6 +773,12 @@ def mda_performance():
         mda_performance[mda]['users'].append(user.username)
         projects = Workplan.query.filter_by(created_by=user.id).all()
         for project in projects:
+            # Auto-update status
+            new_status = update_workplan_status(project)
+            if new_status != project.status:
+                project.status = new_status
+                db.session.commit()
+            
             mda_performance[mda]['projects'].append(project)
             mda_performance[mda]['total_projects'] += 1
             mda_performance[mda]['total_completion'] += project.completion_from_deliverables
@@ -740,7 +828,7 @@ def add_workplan():
             end_date=form.end_date.data,
             duration=duration,
             completion_percentage=0,
-            status=form.status.data
+            status='Pending'  # Always start as Pending
         )
         db.session.add(workplan)
         db.session.commit()
@@ -758,16 +846,33 @@ def add_workplan():
         for error in errors:
             flash(f'❌ {field}: {error}', 'danger')
     
-    # Get status counts for navbar
+    # Get status counts for navbar - User-specific
+    user_workplans = Workplan.query.filter_by(created_by=current_user.id).all()
     status_counts = {
-        'pending': Workplan.query.filter_by(status='Pending').count(),
-        'approved': Workplan.query.filter_by(status='Approved').count(),
-        'rejected': Workplan.query.filter_by(status='Rejected').count(),
-        'ongoing': Workplan.query.filter_by(status='Ongoing').count(),
-        'completed': Workplan.query.filter_by(status='Completed').count(),
-        'started': Workplan.query.filter_by(status='Started').count(),
-        'pause': Workplan.query.filter_by(status='Pause').count()
+        'pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'ongoing': 0,
+        'completed': 0,
+        'started': 0,
+        'pause': 0
     }
+    
+    for wp in user_workplans:
+        if wp.status == 'Pending':
+            status_counts['pending'] += 1
+        elif wp.status == 'Approved':
+            status_counts['approved'] += 1
+        elif wp.status == 'Rejected':
+            status_counts['rejected'] += 1
+        elif wp.status == 'Ongoing':
+            status_counts['ongoing'] += 1
+        elif wp.status == 'Completed':
+            status_counts['completed'] += 1
+        elif wp.status == 'Started':
+            status_counts['started'] += 1
+        elif wp.status == 'Pause':
+            status_counts['pause'] += 1
     
     return render_template('add.html', form=form, status_counts=status_counts)
 
@@ -776,29 +881,61 @@ def add_workplan():
 def view_workplan(id):
     workplan = Workplan.query.get_or_404(id)
     
+    # 🔥 Auto-update status before viewing
+    new_status = update_workplan_status(workplan)
+    if new_status != workplan.status:
+        workplan.status = new_status
+        db.session.commit()
+    
     if workplan.created_by != current_user.id and not current_user.is_admin():
         flash('❌ Access denied!', 'danger')
         return redirect(url_for('user_projects', user_id=current_user.id))
     
+    # Get status counts for navbar - User-specific
+    user_workplans = Workplan.query.filter_by(created_by=current_user.id).all()
     status_counts = {
-        'pending': Workplan.query.filter_by(status='Pending').count(),
-        'approved': Workplan.query.filter_by(status='Approved').count(),
-        'rejected': Workplan.query.filter_by(status='Rejected').count(),
-        'ongoing': Workplan.query.filter_by(status='Ongoing').count(),
-        'completed': Workplan.query.filter_by(status='Completed').count(),
-        'started': Workplan.query.filter_by(status='Started').count(),
-        'pause': Workplan.query.filter_by(status='Pause').count()
+        'pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'ongoing': 0,
+        'completed': 0,
+        'started': 0,
+        'pause': 0
     }
     
-    # 🔥 FIXED: Check if user can edit using workplan.edit_attempts instead of user.can_edit_project()
+    for wp in user_workplans:
+        if wp.status == 'Pending':
+            status_counts['pending'] += 1
+        elif wp.status == 'Approved':
+            status_counts['approved'] += 1
+        elif wp.status == 'Rejected':
+            status_counts['rejected'] += 1
+        elif wp.status == 'Ongoing':
+            status_counts['ongoing'] += 1
+        elif wp.status == 'Completed':
+            status_counts['completed'] += 1
+        elif wp.status == 'Started':
+            status_counts['started'] += 1
+        elif wp.status == 'Pause':
+            status_counts['pause'] += 1
+    
+    # 🔥 Check if user can edit using workplan.edit_attempts
     if current_user.is_admin() or current_user.is_superadmin():
         can_edit = True
     elif workplan.created_by == current_user.id:
-        can_edit = workplan.edit_attempts < 5  # Allow edit if under 5 attempts
+        can_edit = workplan.edit_attempts < 5
     else:
         can_edit = False
     
-    return render_template('view.html', workplan=workplan, status_counts=status_counts, can_edit=can_edit)
+    # 🔥 Check if user can upload evidence (only when Approved or Ongoing)
+    can_upload_evidence = workplan.status in ['Approved', 'Ongoing'] and (workplan.created_by == current_user.id or current_user.is_admin())
+    
+    # 🔥 Check if user can complete deliverables (only when Approved or Ongoing)
+    can_complete_deliverables = workplan.status in ['Approved', 'Ongoing'] and (workplan.created_by == current_user.id or current_user.is_admin())
+    
+    return render_template('view.html', workplan=workplan, status_counts=status_counts, 
+                         can_edit=can_edit, can_upload_evidence=can_upload_evidence,
+                         can_complete_deliverables=can_complete_deliverables)
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -859,16 +996,23 @@ def edit_workplan(id):
         form.populate_obj(workplan)
         workplan.duration = (workplan.end_date - workplan.start_date).days + 1
         
-        # Only reset approval if critical fields changed
+        # 🔥 If status is being set to Completed, verify 100% completion
+        if workplan.status == 'Completed' and workplan.completion_percentage < 100:
+            flash('❌ Cannot set status to Completed. Project completion must be 100% first.', 'danger')
+            return redirect(url_for('edit_workplan', id=workplan.id))
+        
+        # 🔥 If project was approved and critical fields changed, reset to Pending
         if critical_changes and was_approved:
             workplan.status = 'Pending'
             workplan.approved_at = None
             workplan.approver_id = None
             workplan.admin_comment = None
             approval_reset = True
+            flash('⚠️ Critical changes detected. Status reset to PENDING - needs re-approval.', 'warning')
         else:
             approval_reset = False
         
+        # Update completion percentage from deliverables
         workplan.completion_percentage = workplan.completion_from_deliverables
         
         # Increment edit attempts for this workplan
@@ -880,26 +1024,36 @@ def edit_workplan(id):
         # Log the edit
         log_audit('UPDATE', 'Workplan', workplan.id, workplan.project_title, original_data, new_data)
         
-        if was_approved:
-            if approval_reset:
-                flash('⚠️ Workplan updated. Status reset to PENDING - needs re-approval.', 'warning')
-            else:
-                flash('✅ Workplan updated. Status remains APPROVED.', 'success')
-        else:
-            flash('✅ Workplan updated successfully!', 'success')
-        
+        flash('✅ Workplan updated successfully!', 'success')
         return redirect(url_for('view_workplan', id=workplan.id))
     
-    # Get status counts for navbar
+    # Get status counts for navbar - User-specific
+    user_workplans = Workplan.query.filter_by(created_by=current_user.id).all()
     status_counts = {
-        'pending': Workplan.query.filter_by(status='Pending').count(),
-        'approved': Workplan.query.filter_by(status='Approved').count(),
-        'rejected': Workplan.query.filter_by(status='Rejected').count(),
-        'ongoing': Workplan.query.filter_by(status='Ongoing').count(),
-        'completed': Workplan.query.filter_by(status='Completed').count(),
-        'started': Workplan.query.filter_by(status='Started').count(),
-        'pause': Workplan.query.filter_by(status='Pause').count()
+        'pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'ongoing': 0,
+        'completed': 0,
+        'started': 0,
+        'pause': 0
     }
+    
+    for wp in user_workplans:
+        if wp.status == 'Pending':
+            status_counts['pending'] += 1
+        elif wp.status == 'Approved':
+            status_counts['approved'] += 1
+        elif wp.status == 'Rejected':
+            status_counts['rejected'] += 1
+        elif wp.status == 'Ongoing':
+            status_counts['ongoing'] += 1
+        elif wp.status == 'Completed':
+            status_counts['completed'] += 1
+        elif wp.status == 'Started':
+            status_counts['started'] += 1
+        elif wp.status == 'Pause':
+            status_counts['pause'] += 1
     
     return render_template('edit.html', workplan=workplan, form=form, status_counts=status_counts)
 
@@ -971,7 +1125,7 @@ def approve_workplan(workplan_id):
     admin_comment = request.form.get('admin_comment', '').strip()
     
     old_status = workplan.status
-    workplan.status = 'Approved'
+    workplan.status = 'Approved'  # 🔥 Set to Approved, then user can start work
     workplan.admin_comment = admin_comment
     workplan.approved_at = datetime.utcnow()
     workplan.approver_id = current_user.id
@@ -981,8 +1135,8 @@ def approve_workplan(workplan_id):
     log_audit('APPROVE', 'Workplan', workplan.id, workplan.project_title, 
              {'status': old_status}, {'status': 'Approved'})
     
-    flash(f'✅ "{workplan.project_title}" approved!', 'success')
-    return redirect(url_for('user_projects', user_id=workplan.created_by))
+    flash(f'✅ "{workplan.project_title}" approved! You can now upload evidence and complete deliverables.', 'success')
+    return redirect(url_for('view_workplan', id=workplan.id))
 
 @app.route('/reject/<int:workplan_id>', methods=['POST'])
 @login_required
@@ -1021,6 +1175,10 @@ def toggle_deliverable(deliverable_id):
     if workplan.created_by != current_user.id and not current_user.is_admin():
         return jsonify({'error': 'Access denied'}), 403
     
+    # 🔥 Only allow completing deliverables if status is Approved or Ongoing
+    if workplan.status not in ['Approved', 'Ongoing']:
+        return jsonify({'error': 'Deliverables can only be completed for Approved or Ongoing projects'}), 403
+    
     # Check if evidence is required and missing
     if deliverable.requires_evidence and not deliverable.completed:
         if not deliverable.evidence_files or len(deliverable.evidence_files) == 0:
@@ -1040,6 +1198,12 @@ def toggle_deliverable(deliverable_id):
     
     new_completion = workplan.completion_from_deliverables
     workplan.completion_percentage = new_completion
+    
+    # 🔥 Auto-set status to Completed if 100% complete
+    if new_completion >= 100 and workplan.status != 'Completed':
+        workplan.status = 'Completed'
+        flash('🎉 All deliverables completed! Status set to Completed.', 'success')
+    
     db.session.commit()
     
     log_audit('UPDATE', 'Deliverable', deliverable.id, deliverable.description,
@@ -1061,6 +1225,10 @@ def upload_evidence(deliverable_id):
     
     if workplan.created_by != current_user.id and not current_user.is_admin():
         return jsonify({'error': 'Access denied'}), 403
+    
+    # 🔥 Only allow evidence upload if status is Approved or Ongoing
+    if workplan.status not in ['Approved', 'Ongoing']:
+        return jsonify({'error': 'Evidence can only be uploaded for Approved or Ongoing projects'}), 403
     
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
@@ -1114,6 +1282,11 @@ def upload_evidence(deliverable_id):
         deliverable.completed_at = datetime.utcnow()
         deliverable.completed_by = current_user.id
         workplan.completion_percentage = workplan.completion_from_deliverables
+        
+        # Auto-set status to Completed if 100% complete
+        if workplan.completion_percentage >= 100 and workplan.status != 'Completed':
+            workplan.status = 'Completed'
+        
         db.session.commit()
     
     return jsonify({
@@ -1302,6 +1475,7 @@ def pending_workplans():
         abort(403)
     pending = Workplan.query.filter_by(status='Pending').order_by(Workplan.created_at.desc()).all()
     
+    # Get status counts for navbar - Global counts for admin
     status_counts = {
         'pending': Workplan.query.filter_by(status='Pending').count(),
         'approved': Workplan.query.filter_by(status='Approved').count(),
@@ -1340,6 +1514,7 @@ def audit_log():
     actions = db.session.query(AuditLog.action).distinct().all()
     entities = db.session.query(AuditLog.entity_type).distinct().all()
     
+    # Get status counts for navbar - Global counts for admin
     status_counts = {
         'pending': Workplan.query.filter_by(status='Pending').count(),
         'approved': Workplan.query.filter_by(status='Approved').count(),
@@ -1371,9 +1546,79 @@ def download_workplan_pdf(workplan_id):
     doc = SimpleDocTemplate(pdf_io, pagesize=A4, topMargin=1*cm, bottomMargin=1.5*cm)
     styles = getSampleStyleSheet()
     
-    # ... PDF generation code (keep your existing PDF code) ...
+    # PDF generation code
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=colors.HexColor('#2c3e50'),
+        spaceAfter=20
+    )
+    
+    # Build PDF content
+    content = []
+    content.append(Paragraph(f"Workplan: {workplan.project_title}", title_style))
+    content.append(Paragraph(f"MDA: {workplan.mda}", styles['Heading4']))
+    content.append(Spacer(1, 0.5*cm))
+    
+    # Details table
+    data = [
+        ['Objective', workplan.objective],
+        ['Assigned Dept', workplan.assigned_dept],
+        ['Collaborating Dept', workplan.collaborating_dept or 'None'],
+        ['Start Date', workplan.start_date.strftime('%Y-%m-%d')],
+        ['End Date', workplan.end_date.strftime('%Y-%m-%d')],
+        ['Duration', f"{workplan.duration} days"],
+        ['Status', workplan.status],
+        ['Completion', f"{workplan.completion_percentage}%"]
+    ]
+    
+    table = Table(data, colWidths=[4*cm, 10*cm])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#ecf0f1')),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2c3e50')),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7')),
+    ]))
+    content.append(table)
+    content.append(Spacer(1, 1*cm))
+    
+    # Deliverables section
+    if workplan.deliverables:
+        content.append(Paragraph("Deliverables", styles['Heading2']))
+        deliverable_data = [['#', 'Description', 'Status']]
+        for i, d in enumerate(workplan.deliverables, 1):
+            status = '✅ Completed' if d.completed else '⏳ In Progress'
+            deliverable_data.append([str(i), d.description, status])
+        
+        deliv_table = Table(deliverable_data, colWidths=[1*cm, 10*cm, 4*cm])
+        deliv_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#bdc3c7')),
+        ]))
+        content.append(deliv_table)
+    
+    doc.build(content)
     
     filename = f"Workplan_{workplan.project_title.replace(' ', '_')}_{workplan_id}.pdf"
+    pdf_io.seek(0)
     return send_file(pdf_io, mimetype='application/pdf', as_attachment=True, download_name=filename)
 
 if __name__ == '__main__':
@@ -1406,16 +1651,6 @@ if __name__ == '__main__':
                 )
                 test_user.set_password('password123')
                 db.session.add(test_user)
-                
-                test_admin = User(
-                    username='admin',
-                    mda_name='System Administration',
-                    email='admin@example.com',
-                    phone='0000000000',
-                    role='Admin'
-                )
-                test_admin.set_password('password123')
-                db.session.add(test_admin)
                 
                 db.session.commit()
                 print("✅ Created test users for quick login")
