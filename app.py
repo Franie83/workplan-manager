@@ -161,7 +161,7 @@ def superadmin_required(f):
 # Before request handler
 @app.before_request
 def before_request():
-    public_routes = ['login', 'register', 'static']
+    public_routes = ['login', 'register', 'static', 'quick_login']
     if request.endpoint in public_routes:
         return
     if current_user.is_authenticated:
@@ -355,6 +355,78 @@ def login():
     
     return render_template('login.html', form=form)
 
+# 🔥 NEW: Quick Login Route - For development/testing only
+# 🔥 NEW: Quick Login Route - For development/testing only
+@app.route('/quick-login/<string:role>')
+def quick_login(role):
+    """
+    Quick login for development/testing purposes.
+    Usage: /quick-login/user, /quick-login/admin, /quick-login/superadmin
+    """
+    # Only allow in development mode
+    if not app.debug:
+        flash('Quick login is only available in development mode.', 'danger')
+        return redirect(url_for('login'))
+    
+    # If user is already logged in, log them out first
+    if current_user.is_authenticated:
+        logout_user()
+        session.clear()
+    
+    # Find or create a user with the specified role
+    role_map = {
+        'user': {'username': 'testuser', 'mda': 'Test MDA', 'email': 'user@example.com', 'phone': '08012345678'},
+        'admin': {'username': 'admin', 'mda': 'System Administration', 'email': 'admin@example.com', 'phone': '0000000000'},
+        'superadmin': {'username': 'superadmin', 'mda': 'System Administration', 'email': 'superadmin@example.com', 'phone': '0000000000'}
+    }
+    
+    if role not in role_map:
+        flash('Invalid role specified.', 'danger')
+        return redirect(url_for('login'))
+    
+    role_info = role_map[role]
+    email = role_info['email']
+    username = role_info['username']
+    
+    # Check if user exists by email first
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        # Check if username exists (handle conflict)
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            # If username exists but email doesn't, use the existing user
+            user = existing_user
+            print(f"⚠️ Using existing user with username '{username}' (email: {user.email})")
+        else:
+            # Create the user if they don't exist
+            print(f"Creating new {role} user: {email}")
+            user = User(
+                username=username,
+                mda_name=role_info['mda'],
+                email=email,
+                phone=role_info['phone'],
+                role=role.capitalize()  # 'user' -> 'User', 'admin' -> 'Admin', 'superadmin' -> 'Superadmin'
+            )
+            user.set_password('password123')
+            db.session.add(user)
+            db.session.commit()
+            print(f"✅ Created {role} user with ID: {user.id}")
+    
+    # Log the user in
+    login_user(user)
+    session['_fresh'] = True
+    
+    # Log audit
+    log_audit('QUICK_LOGIN', 'User', user.id, user.username)
+    
+    flash(f'⚡ Quick login as {user.username} ({user.role})', 'info')
+    
+    # Redirect based on role
+    if user.is_admin():
+        return redirect(url_for('users_list'))
+    else:
+        return redirect(url_for('user_projects', user_id=user.id))
 # FIXED: Logout route - properly separated
 @app.route('/logout')
 def logout():
@@ -1323,6 +1395,31 @@ if __name__ == '__main__':
                 db.session.add(admin)
                 db.session.commit()
                 print("✅ Default superadmin created (email: admin@example.com, password: admin123)")
+                
+                # Create test user and admin for quick login
+                test_user = User(
+                    username='testuser',
+                    mda_name='Test MDA',
+                    email='user@example.com',
+                    phone='08012345678',
+                    role='User'
+                )
+                test_user.set_password('password123')
+                db.session.add(test_user)
+                
+                test_admin = User(
+                    username='admin',
+                    mda_name='System Administration',
+                    email='admin@example.com',
+                    phone='0000000000',
+                    role='Admin'
+                )
+                test_admin.set_password('password123')
+                db.session.add(test_admin)
+                
+                db.session.commit()
+                print("✅ Created test users for quick login")
+                
         except Exception as e:
             print(f"Database setup: {e}")
     app.run(debug=True)
