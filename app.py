@@ -219,13 +219,13 @@ def register():
         
         try:
             print("Creating new user...")
+            # 🔥 FIXED: Removed edit_attempts=0
             user = User(
                 username=form.username.data,
                 mda_name=form.mda_name.data,
                 email=form.email.data,
                 phone=form.phone.data,
-                role=form.role.data,
-                edit_attempts=0
+                role=form.role.data
             )
             user.set_password(form.password.data)
             print(f"User object created: {user.username}")
@@ -434,13 +434,13 @@ def add_user():
             flash('Email already exists!', 'danger')
             return render_template('add_user.html', form=form, status_counts=status_counts)
         
+        # 🔥 FIXED: Removed edit_attempts=0
         user = User(
             username=form.username.data,
             mda_name=form.mda_name.data,
             email=form.email.data,
             phone=form.phone.data,
-            role=form.role.data,
-            edit_attempts=0
+            role=form.role.data
         )
         user.set_password(form.password.data)
         db.session.add(user)
@@ -727,6 +727,7 @@ def view_workplan(id):
         can_edit = False
     
     return render_template('view.html', workplan=workplan, status_counts=status_counts, can_edit=can_edit)
+
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_workplan(id):
@@ -1310,13 +1311,13 @@ if __name__ == '__main__':
             
             # Create default superadmin if none exists
             if User.query.count() == 0:
+                # 🔥 FIXED: Removed edit_attempts=0
                 admin = User(
                     username='admin',
                     mda_name='System Administration',
                     email='admin@example.com',
                     phone='0000000000',
-                    role='Superadmin',
-                    edit_attempts=0
+                    role='Superadmin'
                 )
                 admin.set_password('admin123')
                 db.session.add(admin)
