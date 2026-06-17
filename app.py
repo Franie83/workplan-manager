@@ -356,17 +356,17 @@ def login():
     return render_template('login.html', form=form)
 
 # 🔥 NEW: Quick Login Route - For development/testing only
-# 🔥 NEW: Quick Login Route - For development/testing only
+# 🔥 UPDATED: Quick Login Route - Works in production
 @app.route('/quick-login/<string:role>')
 def quick_login(role):
     """
     Quick login for development/testing purposes.
     Usage: /quick-login/user, /quick-login/admin, /quick-login/superadmin
     """
-    # Only allow in development mode
-    if not app.debug:
-        flash('Quick login is only available in development mode.', 'danger')
-        return redirect(url_for('login'))
+    # 🔥 REMOVED: Only allow in development mode check
+    # if not app.debug:
+    #     flash('Quick login is only available in development mode.', 'danger')
+    #     return redirect(url_for('login'))
     
     # If user is already logged in, log them out first
     if current_user.is_authenticated:
@@ -406,7 +406,7 @@ def quick_login(role):
                 mda_name=role_info['mda'],
                 email=email,
                 phone=role_info['phone'],
-                role=role.capitalize()  # 'user' -> 'User', 'admin' -> 'Admin', 'superadmin' -> 'Superadmin'
+                role=role.capitalize()
             )
             user.set_password('password123')
             db.session.add(user)
